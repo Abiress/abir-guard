@@ -31,28 +31,31 @@
 //! - `rotation` — Automatic key rotation (time/usage-based)
 //! - `differential_privacy` — Differential privacy for entropy collection
 
-pub mod quantum_kernel;
+pub mod differential_privacy;
 pub mod entropy_inject;
-pub mod zero_copy;
-pub mod mcp_gateway;
-pub mod persistent_vault;
 pub mod kdf;
-pub mod shamir;
+pub mod mcp_gateway;
 pub mod ml_dsa;
+pub mod persistent_vault;
+pub mod quantum_kernel;
 pub mod revocation;
 pub mod rotation;
-pub mod differential_privacy;
+pub mod shamir;
+pub mod zero_copy;
 
-pub use quantum_kernel::{HybridEncryptor, KeyPair, Ciphertext, Vault};
-pub use entropy_inject::EntropyCollector;
-pub use zero_copy::ZeroCopyVault;
-pub use mcp_gateway::{McpServer, McpRequest, McpResponse};
-pub use kdf::{derive_key, derive_key_with_salt};
-pub use shamir::{split as shamir_split, reconstruct as shamir_reconstruct, Share};
-pub use ml_dsa::{MldsaKeypair, generate_keypair as mldsa_generate_keypair, sign as mldsa_sign, verify as mldsa_verify};
-pub use revocation::{RevocationList, RevocationReason};
-pub use rotation::{KeyRotationManager, KeyMetadata};
 pub use differential_privacy::{DifferentialEntropyCollector, SpectreMeltdownDefender};
+pub use entropy_inject::EntropyCollector;
+pub use kdf::{derive_key, derive_key_with_salt};
+pub use mcp_gateway::{McpRequest, McpResponse, McpServer};
+pub use ml_dsa::{
+    generate_keypair as mldsa_generate_keypair, sign as mldsa_sign, verify as mldsa_verify,
+    MldsaKeypair,
+};
+pub use quantum_kernel::{Ciphertext, HybridEncryptor, KeyPair, Vault};
+pub use revocation::{RevocationList, RevocationReason};
+pub use rotation::{KeyMetadata, KeyRotationManager};
+pub use shamir::{reconstruct as shamir_reconstruct, split as shamir_split, Share};
+pub use zero_copy::ZeroCopyVault;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

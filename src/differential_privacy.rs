@@ -3,7 +3,7 @@
 //! Adds calibrated noise to timing-based entropy collection to defeat
 //! Spectre/Meltdown side-channel attacks using Laplace mechanism.
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::time::Instant;
 
 /// Laplace noise generator for differential privacy
@@ -124,8 +124,14 @@ mod tests {
 
     #[test]
     fn test_constant_time_compare() {
-        assert!(SpectreMeltdownDefender::constant_time_compare(b"hello", b"hello"));
-        assert!(!SpectreMeltdownDefender::constant_time_compare(b"hello", b"world"));
-        assert!(!SpectreMeltdownDefender::constant_time_compare(b"short", b"longer"));
+        assert!(SpectreMeltdownDefender::constant_time_compare(
+            b"hello", b"hello"
+        ));
+        assert!(!SpectreMeltdownDefender::constant_time_compare(
+            b"hello", b"world"
+        ));
+        assert!(!SpectreMeltdownDefender::constant_time_compare(
+            b"short", b"longer"
+        ));
     }
 }

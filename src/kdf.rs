@@ -23,25 +23,22 @@ pub fn derive_key(passphrase: &str, salt: Option<&[u8]>) -> ([u8; ARGON2_KEY_LEN
             s
         }
     };
-    
+
     let params = Params::new(
         ARGON2_MEMORY_KIB,
         ARGON2_TIME_COST,
         ARGON2_PARALLELISM,
         Some(ARGON2_KEY_LENGTH),
-    ).expect("Valid Argon2 params");
-    
-    let argon2 = Argon2::new(
-        argon2::Algorithm::Argon2id,
-        Version::V0x13,
-        params,
-    );
-    
+    )
+    .expect("Valid Argon2 params");
+
+    let argon2 = Argon2::new(argon2::Algorithm::Argon2id, Version::V0x13, params);
+
     let mut key = [0u8; ARGON2_KEY_LENGTH];
     argon2
         .hash_password_into(passphrase.as_bytes(), &salt_bytes, &mut key)
         .expect("Argon2id derivation failed");
-    
+
     (key, salt_bytes)
 }
 
@@ -54,28 +51,28 @@ pub fn derive_key_with_salt(passphrase: &str, salt: &[u8]) -> [u8; ARGON2_KEY_LE
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_argon2id_derivation() {
         let (key1, salt) = derive_key("test-passphrase", None);
         assert!(!key1.iter().all(|&b| b == 0));
         assert_eq!(salt.len(), SALT_LENGTH);
-        
+
         // Same passphrase + same salt = same key
         let key2 = derive_key_with_salt("test-passphrase", &salt);
         assert_eq!(key1, key2);
-        
+
         // Different passphrase = different key
         let (key3, _) = derive_key("different-passphrase", Some(&salt));
         assert_ne!(key1, key3);
-        
+
         // Different salt = different key
         let mut different_salt = salt.clone();
         different_salt[0] ^= 0xFF;
         let key4 = derive_key_with_salt("test-passphrase", &different_salt);
         assert_ne!(key1, key4);
     }
-    
+
     #[test]
     fn test_key_length() {
         let (key, _) = derive_key("any-pass", None);

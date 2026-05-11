@@ -3,7 +3,7 @@
 //! Implements a Certificate Revocation List for agent keys.
 //! Allows marking keys as compromised/revoked, preventing their use.
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -43,6 +43,12 @@ pub struct RevocationList {
     entries: Vec<RevocationEntry>,
     revoked_ids: HashMap<String, usize>,
     signature: Vec<u8>,
+}
+
+impl Default for RevocationList {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RevocationList {
@@ -158,7 +164,12 @@ mod tests {
         let mut crl = RevocationList::new();
         assert!(!crl.is_revoked("agent-1"));
 
-        crl.revoke("agent-1", RevocationReason::Compromised, "admin", "Key leaked");
+        crl.revoke(
+            "agent-1",
+            RevocationReason::Compromised,
+            "admin",
+            "Key leaked",
+        );
         assert!(crl.is_revoked("agent-1"));
         assert!(!crl.is_revoked("agent-2"));
     }

@@ -9,8 +9,8 @@
 use fips204::ml_dsa_65;
 use fips204::traits::{SerDes, Signer, Verifier};
 use sha3::{Digest, Sha3_512};
-use thiserror::Error;
 use std::convert::TryInto;
+use thiserror::Error;
 
 /// ML-DSA signature errors
 #[derive(Debug, Error)]
@@ -34,8 +34,7 @@ pub struct MldsaKeypair {
 
 /// Generate a new ML-DSA-65 keypair (security category 3).
 pub fn generate_keypair() -> Result<MldsaKeypair, MldsaError> {
-    let (pk, sk) = ml_dsa_65::try_keygen()
-        .map_err(|e| MldsaError::KeyGenFailed(e.to_string()))?;
+    let (pk, sk) = ml_dsa_65::try_keygen().map_err(|e| MldsaError::KeyGenFailed(e.to_string()))?;
 
     Ok(MldsaKeypair {
         signing_key: sk.into_bytes().to_vec(),
@@ -108,16 +107,10 @@ pub fn deserialize_keypair(json: &str) -> Result<MldsaKeypair, MldsaError> {
         .as_str()
         .ok_or_else(|| MldsaError::DeserializationFailed("Missing verifying_key".into()))?;
 
-    let signing_key = base64::Engine::decode(
-        &base64::engine::general_purpose::STANDARD,
-        sk_b64,
-    )
-    .map_err(|e| MldsaError::DeserializationFailed(e.to_string()))?;
-    let verifying_key = base64::Engine::decode(
-        &base64::engine::general_purpose::STANDARD,
-        vk_b64,
-    )
-    .map_err(|e| MldsaError::DeserializationFailed(e.to_string()))?;
+    let signing_key = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, sk_b64)
+        .map_err(|e| MldsaError::DeserializationFailed(e.to_string()))?;
+    let verifying_key = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, vk_b64)
+        .map_err(|e| MldsaError::DeserializationFailed(e.to_string()))?;
 
     Ok(MldsaKeypair {
         signing_key,
