@@ -31,25 +31,58 @@
 //! - `rotation` — Automatic key rotation (time/usage-based)
 //! - `differential_privacy` — Differential privacy for entropy collection
 
+pub mod advanced_secret_sharing;
+pub mod audit;
+pub mod blockchain;
+pub mod confidential_computing;
 pub mod differential_privacy;
 pub mod entropy_inject;
+pub mod interop;
 pub mod kdf;
 pub mod mcp_gateway;
 pub mod ml_dsa;
+pub mod performance;
 pub mod persistent_vault;
+pub mod qkd;
 pub mod quantum_kernel;
 pub mod revocation;
 pub mod rotation;
 pub mod shamir;
 pub mod zero_copy;
 
+pub use advanced_secret_sharing::{
+    authenticate_share, verify_authenticated_share,
+    create_commitments, verify_share, AdvancedSharingError, AuthenticatedShare,
+    ParticipantShare, ProactiveRefresher, RefreshProof, ResharePlan, VerifiedShare,
+    VssCommitment, verify_reshare_plan,
+};
+pub use blockchain::{
+    AnchorRegistry, ContractError, DecentralizedPki, DpkiEntry, DpkiError, KeyAnchor,
+    KeyAnchorError, OnChainVerificationResult, SimulatedContractAnchor, SmartContractAnchor,
+};
 pub use differential_privacy::{DifferentialEntropyCollector, SpectreMeltdownDefender};
 pub use entropy_inject::EntropyCollector;
+pub use audit::{
+    AuditEntry, AuditError, AuditLog, ComplianceError, ComplianceReport, ComplianceRule,
+    ComplianceViolation, Severity,
+};
+pub use interop::{
+    DidDocument, DidError, JwkError, PqcAlgorithm, PqcJwk, VerificationMethod,
+    VerificationRelationship,
+};
 pub use kdf::{derive_key, derive_key_with_salt};
 pub use mcp_gateway::{McpRequest, McpResponse, McpServer};
 pub use ml_dsa::{
     generate_keypair as mldsa_generate_keypair, sign as mldsa_sign, verify as mldsa_verify,
     MldsaKeypair,
+};
+pub use performance::{
+    batch_sign, batch_verify, BatchOpsError, BatchSignResult, BatchVerifyResult, CacheError,
+    CacheStats, DerivedKeyCache, SignRequest, VerifyRequest,
+};
+pub use qkd::{
+    Bb84Simulator, EntropySource, QkdError, QkdParameters, QkdSessionReport, QuantumChannel,
+    XorShift64,
 };
 pub use quantum_kernel::{Ciphertext, HybridEncryptor, KeyPair, Vault};
 pub use revocation::{RevocationList, RevocationReason};

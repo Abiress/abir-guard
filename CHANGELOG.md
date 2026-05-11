@@ -4,6 +4,76 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ---
 
+## [Unreleased]
+
+## [3.2.0] - 2026-05-12
+
+### Added
+
+- **EPIC 1.1 (Confidential Computing - SGX 2.0)**: Completed foundational SGX module set in Rust.
+  - Added `src/confidential_computing/sgx/mod.rs` with enclave lifecycle, quote model, PCR policy model, sealing and signing APIs.
+  - Added `src/confidential_computing/sgx/enclave_interface.rs` with SGX FFI abstraction stubs and safety-documented interfaces.
+  - Added `src/confidential_computing/sgx/attestation.rs` with DCAP/IAS attestation flow abstractions.
+  - Added `src/confidential_computing/sgx/sealed_storage.rs` for sealed blob management and policy-bound retrieval.
+  - Added `src/confidential_computing/sgx/quote_verifier.rs` for quote validation policy and verification result modeling.
+
+- **EPIC 1.2 (Confidential Computing - ARM TrustZone)**: Advanced TrustZone implementation with command transport and attestation verification.
+  - Added `src/confidential_computing/trustzone/mod.rs` with `TrustZoneEnclave`, session config, attestation, sealing, and unsealing interfaces.
+  - Added `src/confidential_computing/trustzone/interface.rs` with OP-TEE style command IDs, request/response marshalling, and command dispatch.
+  - Added `src/confidential_computing/trustzone/attestation.rs` with attestation policy and verifier for simulated TrustZone reports.
+  - Added cross-TEE contract tests (SGX + TrustZone) to validate shared attestation/sealing behavior.
+  - Extended `src/confidential_computing/mod.rs` exports to include TrustZone types.
+
+- **EPIC 1.3 (Confidential Computing - Multi-Party Computation)**: Started MPC coordination primitives.
+  - Added `src/confidential_computing/mpc/mod.rs` with policy validation, participant registration, share submission, round progression, and deterministic digest finalization.
+  - Added MPC error model for invalid policy, duplicate participants/shares, unknown parties, and insufficient shares.
+  - Added commit/reveal protocol messages with round checks and anti-replay nonce tracking.
+  - Added aggregate message validation to detect digest mismatch before round closure.
+  - Extended `src/confidential_computing/mod.rs` exports to include MPC policy/session types.
+
+- **EPIC 1.4 (Confidential Computing - Attestation-as-a-Service)**: Started unified attestation verification facade.
+  - Added `src/confidential_computing/attestation_service/mod.rs` with normalized result model for SGX and TrustZone evidence.
+  - Added service-level error model for provider-specific verification failures and unsupported evidence types.
+  - Added conversion pipeline from SGX quote verification and TrustZone report verification to one unified verdict shape.
+  - Added policy-driven routing controls: allowed TEE providers, per-provider freshness SLAs, and minimum trust-level enforcement.
+  - Added batch verification APIs for both generic reports and SGX quote collections.
+  - Extended `src/confidential_computing/mod.rs` exports to include attestation service types.
+
+- **EPIC 2 (Advanced Secret Sharing)**: VSS commitments, proactive share refresh, participant re-sharing with verifiable `RefreshProof` transcripts, and HMAC-SHA-256 participant MAC binding (`AuthenticatedShare`, `authenticate_share`, `verify_authenticated_share`) — tamper-evident participant identity checks on every re-sharing submission.
+- **EPIC 3 (Blockchain Integration)**: Three-layer `blockchain` module — `key_anchor` (SHA-256 on-chain key commitments, owner-gated revocation, `AnchorRegistry`), `dpki` (decentralized PKI facade with validity windows and live anchor checks, `DecentralizedPki`), and `smart_contract` (`SmartContractAnchor` trait + `SimulatedContractAnchor` in-process back-end with simulated block height).
+- **EPIC 5 (Interoperability Standards)**: `interop` module with two sub-systems — `jwk` (JWK-like PQC key serialisation: `PqcJwk::from_public`, `from_keypair`, `decode_public_key`, `decode_private_key`, `to_json`/`from_json` for ML-DSA-65 and ML-KEM-1024) and `did` (W3C DID Core facade: `DidDocument` with `add_verification_method`, `get_method`, `remove_method`, relationship tracking for `authentication`/`assertionMethod`/`keyAgreement`, and JSON serialisation).
+- **EPIC 6 (Audit & Compliance)**: `audit` module with two sub-systems — `audit_log` (append-only SHA-256 chained `AuditLog` with tamper-evident verification via `verify_chain`) and `compliance` (`ComplianceReport::evaluate` policy checks for auth-failure streaks, revocation criticality, and revoke/rotation ratio constraints).
+- **EPIC 7 (Quantum Key Distribution)**: `qkd` module with BB84-inspired simulation — pluggable `EntropySource`, deterministic `XorShift64` source, configurable `QuantumChannel` noise model, and `Bb84Simulator` session reports (`QkdSessionReport`) with QBER estimation and acceptance thresholds.
+- **EPIC 4 (Performance Optimization)**: `performance` module with two sub-systems — `key_cache` (bounded LRU-style `DerivedKeyCache` that amortizes Argon2id cost across repeated passphrase+salt requests, with eviction, invalidation, and `CacheStats`) and `batch_ops` (batch ML-DSA sign/verify via `batch_sign`/`batch_verify` returning aggregate `BatchSignResult`/`BatchVerifyResult` without aborting on partial failure).
+  - Added `src/advanced_secret_sharing.rs` with verifiable share commitments and share verification helpers.
+  - Added `ProactiveRefresher` epoch-based share refresh model for proactive rotation workflows.
+  - Added participant-aware proactive re-sharing plan for join/leave redistribution with threshold validation.
+  - Added refresh transcript proof generation and plan verification (`verify_reshare_plan`) to detect resharing tamper.
+  - Added re-sharing tests for participant join, participant leave, and invalid threshold rejection paths.
+  - Added tamper-detection test for resharing proof verification.
+  - Extended `src/lib.rs` exports to include advanced secret sharing APIs.
+
+### Changed
+
+- Added Cargo feature declaration for `sgx-simulator` in `Cargo.toml` to support strict linting with feature-gated SGX paths.
+- Extended SGX API surface with `Enclave::attestation_config()` accessor and corresponding unit coverage.
+- Hardened SGX-dependent Rust tests to gracefully handle non-SGX/non-simulator environments in release profile runs.
+- Aligned Python runtime version constant in `abir_guard/__init__.py` to `3.2.0`.
+
+### Validation
+
+- `cargo clippy --all-targets --all-features -- -D warnings`: passing.
+- `cargo test --all-targets`: passing (176/176 lib + 2/2 bin tests).
+- `cargo test --lib --release`: passing (176/176 tests).
+- `python3 tests/run_tests.py`: passing (5/5 suites).
+- `pytest tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py -v`: passing (64/64 tests).
+- `cd sdk/go && go test -v ./...`: passing.
+
+### Benchmarks
+
+- `cargo bench --no-run` and `cargo bench -- --nocapture`: benchmark stage compiles/executes successfully (no dedicated Rust benchmark functions currently defined).
+- Python end-to-end vault micro-benchmark: `2000` generate+encrypt+decrypt cycles in `0.15s` on the current environment.
+
 ## [3.1.2] - 2026-05-11
 
 ### Security Fixes 🔐
@@ -125,59 +195,12 @@ b0ee8d5 style: apply rustfmt formatting and reorganize imports across all Rust m
 
 ---
 
-## Planned Features
-
-### [3.2.0] - Phase 4: Enterprise & Confidential Computing (Q3 2026)
-
-#### Confidential Computing Integration
-- **SGX 2.0 Enclave Support**: Verified attestation and secure enclaves for MPC
-- **TrustZone TEE**: ARM confidential computing for resource-constrained agents
-- **Secure Multi-Party Computation**: Threshold signing across distributed agents
-- **Attestation as a Service**: Remote validation of agent integrity
-
-#### Advanced Secret Sharing
-- **Verifiable Secret Sharing (VSS)**: Byzantine fault-tolerant threshold cryptography
-- **Proactive Re-sharing**: Long-lived key rotation without re-initialization
-- **Distributed Threshold Signatures**: Multi-party ECDSA/EdDSA schemes
-- **Shamir Parameter Optimization**: Adaptive threshold selection based on agent topology
-
-#### Blockchain Integration
-- **Immutable Key Material Anchoring**: Deposit secrets on Ethereum, Solana, Polygon
-- **Decentralized PKI**: Agent identity certificates via blockchain
-- **Smart Contract Key Policies**: On-chain rules for key access and rotation
-- **Cross-Chain Attestation**: Unified identity across multiple blockchains
-
-#### Performance Optimization
-- **GPU-Accelerated ML-KEM**: CUDA/HIP kernels for high-throughput encryption
-- **AES-NI Hardware Acceleration**: Native CPU extensions for symmetric crypto
-- **Batch Key Derivation**: Parallel Argon2id KDF for bulk operations
-- **MPC Accelerators**: Specialized hardware support for threshold operations
-
-#### Interoperability Standards
-- **PKCS#11 HSM Interface**: Standard hardware security module compatibility
-- **OpenKeychain Support**: Seamless integration with key management systems
-- **Hardware Security Module Federation**: Multi-HSM orchestration
-- **OpenPGP Compatibility**: Legacy key format support for migration
-
-#### Enhanced Audit & Compliance
-- **SOC 2 Type II Logging**: Compliant audit trail with tamper-evident logs
-- **GDPR Key Destruction**: Cryptographically certified key deletion proofs
-- **Compliance Report Generation**: Automated audit reports for regulatory bodies
-- **Key Provenance Tracking**: Complete lineage and custody history
-
-#### Quantum Key Distribution (QKD)
-- **BB84 Protocol Implementation**: Quantum-secure key distribution
-- **QKD Appliance Integration**: Support for commercial QKD hardware
-- **Hybrid QKD + PQC**: Ultra-high-security environments combining both methods
-- **Satellite QKD Support**: Space-based key distribution for global agents
-
----
-
 ## Version Compatibility
 
 | Version | Python | Rust | Go | Node.js | Status |
 |---------|--------|------|-----|---------|--------|
-| 3.1.2 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Current |
+| 3.2.0 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Current |
+| 3.1.2 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Stable |
 | 3.1.1 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Stable |
 | 3.0.0 | 3.10+ | 1.70+ | 1.21+ | 18+ | ⏳ Legacy |
 
@@ -198,5 +221,5 @@ Abir-Guard is released under the [MIT License](LICENSE).
 
 ---
 
-**Last Updated**: May 11, 2026  
+**Last Updated**: May 12, 2026  
 **Maintained By**: [Abir Maheshwari](https://github.com/Abiress)

@@ -1,6 +1,6 @@
 [package]
 name = "abir_guard"
-version = "3.1.2"
+version = "3.2.0"
 edition = "2021"
 rust-version = "1.70"
 description = "Abir-Guard: Quantum-Resilient Agentic Vault for AI Agent Memory with NIST-standard Post-Quantum Cryptography"
@@ -34,6 +34,7 @@ aes-gcm = "0.10"
 hkdf = "0.12"
 sha3 = "0.10"
 sha2 = "0.10"
+hmac = "0.12"
 rand = "0.10"
 getrandom = "0.4"
 digest = "0.10"
@@ -50,6 +51,10 @@ fips204 = "0.4"
 ml-kem = { version = "0.3", features = ["getrandom", "zeroize"] }
 ring = "0.17"
 hex = "0.4"
+
+[features]
+default = []
+sgx-simulator = []
 
 [dev-dependencies]
 tempfile = "3"
