@@ -1,7 +1,7 @@
 # Abir-Guard v3.2.0 — Quantum-Resilient Agentic Vault for AI Agent Memory
 
 <p align="center">
-  <strong>The first post-quantum vault built specifically for AI agents. Protects agent memory against Harvest Now, Decrypt Later attacks with NIST-standard ML-KEM-1024 + ML-DSA-65.</strong>
+  <strong>A post-quantum vault for AI agent memory. Protects agent data against Harvest Now, Decrypt Later attacks with ML-KEM-1024 + ML-DSA-65.</strong>
 </p>
 
 <p align="center">
@@ -23,23 +23,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Abiress/abir-guard/actions"><img src="https://img.shields.io/badge/Tests-109%2F109%20Passing-brightgreen?style=flat-square" alt="109/109 Tests Passing"></a>
-  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Rust-32%2F32%20Passing-orange?style=flat-square&logo=rust" alt="Rust 32/32"></a>
-  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Python-65%2F65%20Passing-yellow?style=flat-square&logo=python" alt="Python 65/65"></a>
-  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Go-12%2F12%20Passing-cyan?style=flat-square&logo=go" alt="Go 12/12"></a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/🇮🇳_Indian_Quantum_Mission-Supported-orange?style=flat-square" alt="Indian Quantum Mission">
-  <img src="https://img.shields.io/badge/🌍_Global_Quantum_Mission-Supported-blue?style=flat-square" alt="Global Quantum Mission">
-  <img src="https://img.shields.io/badge/🇮🇳🌍_Indian_AI_Mission-Supported-ff9933?style=flat-square" alt="Indian AI Mission">
+  <a href="https://github.com/Abiress/abir-guard/actions"><img src="https://img.shields.io/badge/Validation-Up%20to%20date-brightgreen?style=flat-square" alt="Validation status"></a>
+  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Rust-176%20lib%20%2B%202%20CLI-orange?style=flat-square&logo=rust" alt="Rust validation"></a>
+  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Python-smoke%20validated-yellow?style=flat-square&logo=python" alt="Python validation"></a>
+  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Go-SDK%20tests%20passing-cyan?style=flat-square&logo=go" alt="Go validation"></a>
 </p>
 
 ---
 
 ```diff
 - Legacy memory storage is a ticking time bomb. Quantum computers will decrypt it.
-+ Abir-Guard: The first post-quantum vault built specifically for AI agents.
++ Abir-Guard: A post-quantum vault built for AI agents.
 ```
 
 > **The Harvest Now, Decrypt Later threat is real.** Adversaries are collecting your encrypted agent memory today — waiting for quantum computers to decrypt it tomorrow. Abir-Guard stops them with NIST-standard post-quantum cryptography deployed today.
@@ -55,35 +49,41 @@
 | **AI Native** | LangChain tools, CrewAI agents, MCP JSON-RPC server, HTTP MCP API |
 | **Hardened** | FIPS 140-3 mode, key revocation (CRL), auto rotation, remote attestation, differential privacy, canary honeypots, tamper-evident audit logs |
 | **Hardware Ready** | YubiKey/FIDO2, TPM 2.0 seal/unseal, Apple Secure Enclave, Intel SGX detection, HSM integration, zero-copy memory policy, Argon2id KDF (OWASP params) |
-| **Tested** | 109 unit tests pass across all languages, CI/CD pipeline, dependabot |
+| **Tested** | Rust: 176 lib + 2 CLI tests passing, Go SDK tests passing, Python SDK smoke tests passing |
 
 ---
 
 ## Why Abir-Guard?
 
-| Feature | **Abir-Guard** | [HashiCorp Vault](https://www.vaultproject.io/) | [AWS KMS](https://aws.amazon.com/kms/) | Standard AES-256 |
-|---------|-----------------|-----------------|---------|------------------|
-| **Post-Quantum Ready** | ✅ [ML-KEM-1024](https://github.com/Abiress/abir-guard/blob/master/abir_guard/ml_kem.py) (production) | ❌ Classical only | ❌ Not available | ❌ Not available |
-| **PQ Signatures** | ✅ [ML-DSA-65](https://github.com/Abiress/abir-guard/blob/master/abir_guard/ml_kem.py) (production) | ❌ Not available | ❌ Not available | ❌ Not available |
-| **AI Agent Native** | ✅ [LangChain ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/langchain.py), [CrewAI ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/crewai.py), [MCP ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/mcp_http.py) | ❌ No AI integrations | ❌ No AI integrations | ❌ No AI integrations |
-| **Multi-Language SDK** | ✅ [Python](https://github.com/Abiress/abir-guard/tree/master/abir_guard), [Rust](https://crates.io/crates/abir_guard), [Go](https://github.com/Abiress/abir-guard/tree/master/sdk/go), [JS](https://github.com/Abiress/abir-guard/tree/master/sdk/js) | ⚠️ Go, Java, Python | ⚠️ AWS SDK required | ❌ Manual implementation |
-| **Hardware Security** | ✅ [YubiKey ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/yubikey_integration.py), [TPM 2.0 ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/tpm2_seal.py), [Apple SE](https://github.com/Abiress/abir-guard/blob/master/abir_guard/hardware_enclave.py) | ✅ HSM support | ✅ Cloud HSM | ❌ Software only |
-| **FIPS 140-3 Mode** | ✅ [Integrated ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/fips_mode.py) | ⚠️ With HSM | ⚠️ With CloudHSM | ❌ Not compliant |
-| **Lightweight** | ✅ 50MB disk, 128MB RAM | ❌ Heavy (300MB+) | ❌ Cloud only | ✅ Lightweight |
-| **Open Source** | ✅ [MIT](https://github.com/Abiress/abir-guard/blob/master/LICENSE) | ✅ MPL 2.0 | ❌ Proprietary | ✅ Depends on lib |
-| **Cost** | ✅ Free (self-hosted) | ✅ Free / Paid Enterprise | ❌ Pay per API call | ✅ Free |
-| **Auto Key Rotation** | ✅ [Integrated ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/rotation.py) | ✅ Manual/API | ✅ Automated | ❌ Manual |
-| **Remote Attestation** | ✅ [Integrated ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/attestation.py) | ❌ Not built-in | ❌ Not built-in | ❌ Not built-in |
-| **Differential Privacy** | ✅ [Laplace noise](https://github.com/Abiress/abir-guard/blob/master/abir_guard/differential_privacy.py) | ❌ Not available | ❌ Not available | ❌ Not available |
-| **Canary Honeypots** | ✅ [Breach detection](https://github.com/Abiress/abir-guard/blob/master/abir_guard/__init__.py) | ❌ Not available | ❌ Not available | ❌ Not available |
-| **MCP HTTP Server** | ✅ [Production ✅](https://github.com/Abiress/abir-guard/blob/master/abir_guard/mcp_http.py) | ❌ Not available | ❌ Not available | ❌ Not available |
+This section is intentionally limited to claims that are verifiable from this repository and local benchmark runs.
 
-**Key differentiators:**
-1. **Post-Quantum First** — Only vault with production-ready NIST FIPS 203/204 (ML-KEM-1024 + ML-DSA-65) deployed today
-2. **AI Agent Native** — Native LangChain/CrewAI tools + MCP server — zero wrapper code needed (now fully functional)
-3. **Lightweight & Multi-Language** — Deploy anywhere with SDKs for Python, Rust, Go, JavaScript
-4. **Harvest Now, Decrypt Later Protection** — Agent memory stays secure against quantum threats
-5. **Hardware Integrated** — YubiKey PIV/FIDO2 + TPM 2.0 + Apple SE — all fully functional (no more fake fallbacks)
+| Capability | Evidence in this repo | Status |
+|---|---|---|
+| Post-quantum KEM | [abir_guard/ml_kem.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/ml_kem.py), [src/quantum_kernel.rs](https://github.com/Abiress/abir-guard/blob/master/src/quantum_kernel.rs) | ✅ Present |
+| Post-quantum signatures | [src/ml_dsa.rs](https://github.com/Abiress/abir-guard/blob/master/src/ml_dsa.rs) | ✅ Present |
+| AI-agent integrations | [abir_guard/langchain.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/langchain.py), [abir_guard/crewai.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/crewai.py), [abir_guard/mcp_http.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/mcp_http.py) | ✅ Present |
+| Multi-language SDKs | [abir_guard](https://github.com/Abiress/abir-guard/tree/master/abir_guard), [src](https://github.com/Abiress/abir-guard/tree/master/src), [sdk/go](https://github.com/Abiress/abir-guard/tree/master/sdk/go), [sdk/js](https://github.com/Abiress/abir-guard/tree/master/sdk/js) | ✅ Present |
+| Hardware security hooks | [abir_guard/yubikey_integration.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/yubikey_integration.py), [abir_guard/tpm2_seal.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/tpm2_seal.py), [abir_guard/hardware_enclave.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/hardware_enclave.py) | ✅ Present |
+| FIPS-mode policy module | [abir_guard/fips_mode.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/fips_mode.py) | ✅ Present |
+| Auto key rotation | [abir_guard/rotation.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/rotation.py), [src/rotation.rs](https://github.com/Abiress/abir-guard/blob/master/src/rotation.rs) | ✅ Present |
+| Remote attestation | [abir_guard/attestation.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/attestation.py), [src/confidential_computing](https://github.com/Abiress/abir-guard/tree/master/src/confidential_computing) | ✅ Present |
+| Differential privacy | [abir_guard/differential_privacy.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/differential_privacy.py), [src/differential_privacy.rs](https://github.com/Abiress/abir-guard/blob/master/src/differential_privacy.rs) | ✅ Present |
+| Canary honeypot support | [abir_guard/__init__.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/__init__.py) | ✅ Present |
+
+### Benchmark Snapshot (Local, 2026-05-12)
+
+| Metric | Command | Result |
+|---|---|---|
+| Rust release binary size | `ls -lh target/release/abir-guard` | `766K` |
+| Rust CLI startup footprint | `/usr/bin/time ./target/release/abir-guard --help` | `0.00s`, `2744 KB` max RSS |
+| Rust lib tests (release) | `cargo test --lib --release` | `176/176` passing, tests finished in `0.58s` |
+| Python SDK throughput | 5000 keygen+encrypt+decrypt loop | `18,956 ops/s` |
+| Python SDK memory | same benchmark via `/usr/bin/time` | `48,200 KB` max RSS |
+| Go SDK representative path | `go test -run TestEncryptDecrypt -v ./...` | pass, `0.09s`, `82,704 KB` max RSS |
+
+### Scope Note
+
+Comparative claims against external products (for example HashiCorp Vault or AWS KMS) are intentionally omitted here unless benchmarked under the same test protocol and linked to authoritative vendor documentation.
 
 ---
 
@@ -165,7 +165,7 @@ graph TB
 - [HSM & TPM Integration](#hsm--tpm-integration)
 - [Quantum Readiness](#quantum-readiness)
 - [Security Architecture](#security-architecture)
-- [Run Tests](#run-tests)
+- [Validation](#validation)
 - [Project Structure](#project-structure)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -960,12 +960,12 @@ AI Engineer | Quantum Computing Researcher
 
 ---
 
-### 🇮🇳🌍 Mission Support
+### Mission Alignment
 
-| Mission | Badge | Description |
+| Mission Area | Badge | Description |
 |---------|-------|-------------|
-| 🇮🇳 Indian Quantum Mission | <img src="https://img.shields.io/badge/🇮🇳-Indian_Quantum_Mission-orange?style=flat-square" alt="IQM"> | Quantum-resilient cryptography for India's National Quantum Mission |
-| 🌍 Global Quantum Mission | <img src="https://img.shields.io/badge/🌍-Global_Quantum_Mission-blue?style=flat-square" alt="GQM"> | NIST FIPS 203/204 compliant worldwide |
-| 🇮🇳🌍 Indian AI Mission | <img src="https://img.shields.io/badge/🇮🇳🌍-Indian_AI_Mission-ff9933?style=flat-square" alt="IAI"> | Quantum-secure memory vaults for sovereign AI agents |
+| 🇮🇳 Indian Quantum Mission priorities | <img src="https://img.shields.io/badge/🇮🇳-Quantum_Alignment-orange?style=flat-square" alt="Quantum alignment"> | Aligns with post-quantum cryptography and secure software goals |
+| 🌍 Global quantum-security priorities | <img src="https://img.shields.io/badge/🌍-PQC_Alignment-blue?style=flat-square" alt="Global alignment"> | Uses NIST-track PQC primitives and defense-in-depth controls |
+| 🇮🇳🌍 Sovereign AI security priorities | <img src="https://img.shields.io/badge/🇮🇳🌍-AI_Security_Alignment-ff9933?style=flat-square" alt="AI alignment"> | Focuses on secure AI-agent memory and key lifecycle controls |
 
 **🇮🇳 Made in India, for the World.**
