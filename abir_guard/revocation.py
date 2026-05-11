@@ -12,13 +12,13 @@ Revocation reasons:
 - policy: Security policy violation
 """
 
-import time
-import json
 import hashlib
 import hmac
+import json
+import time
+from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Optional, Dict, List
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional
 
 
 class RevocationReason(Enum):
@@ -40,21 +40,21 @@ class RevocationEntry:
 class RevocationList:
     """
     Tamper-evident Certificate Revocation List.
-    
+
     Uses HMAC-SHA256 signatures to detect tampering.
     Each entry is signed with a revocation key.
     """
-    
-    def __init__(self, revocation_key: bytes = None):
+
+    def __init__(self, revocation_key: Optional[bytes] = None):
         self._revocation_key = revocation_key or self._generate_key()
         self._entries: List[RevocationEntry] = []
         self._signature: str = ""
-    
+
     @staticmethod
     def _generate_key() -> bytes:
         import secrets
         return secrets.token_bytes(32)
-    
+
     def _compute_signature(self) -> str:
         """Compute HMAC signature over all entries."""
         data = json.dumps(
@@ -66,7 +66,7 @@ class RevocationList:
             data,
             hashlib.sha256
         ).hexdigest()
-    
+
     def verify_integrity(self) -> bool:
         """Verify CRL hasn't been tampered with."""
         if not self._signature:
@@ -75,7 +75,7 @@ class RevocationList:
             self._signature,
             self._compute_signature()
         )
-    
+
     def revoke(self, key_id: str, reason: RevocationReason,
                revoked_by: str = "", details: str = "") -> None:
         """Add a key to the revocation list."""
@@ -88,22 +88,22 @@ class RevocationList:
         )
         self._entries.append(entry)
         self._signature = self._compute_signature()
-    
+
     def is_revoked(self, key_id: str) -> bool:
         """Check if a key is revoked."""
         return any(e.key_id == key_id for e in self._entries)
-    
+
     def get_entry(self, key_id: str) -> Optional[RevocationEntry]:
         """Get revocation details for a key."""
         for entry in self._entries:
             if entry.key_id == key_id:
                 return entry
         return None
-    
-    def list_revoked(self) -> List[Dict]:
+
+    def list_revoked(self) -> List[Dict[str, object]]:
         """List all revoked keys."""
         return [asdict(e) for e in self._entries]
-    
+
     def export(self) -> str:
         """Export CRL as signed JSON."""
         return json.dumps({
@@ -112,7 +112,7 @@ class RevocationList:
             "signature": self._signature,
             "exported_at": time.time(),
         }, indent=2)
-    
+
     @classmethod
     def load(cls, crl_json: str, revocation_key: bytes) -> "RevocationList":
         """Import CRL from JSON."""

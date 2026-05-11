@@ -13,8 +13,8 @@ Rotation is a two-phase process:
 """
 
 import time
-from typing import Optional, Dict, List
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -29,23 +29,23 @@ class KeyMetadata:
     max_operations: int = 0  # 0 = no usage limit
     is_expired: bool = False
     rotated_to: str = ""  # key_id of replacement key
-    
-    def record_encrypt(self):
+
+    def record_encrypt(self) -> None:
         self.encrypt_count += 1
         self.last_used_at = time.time()
-    
-    def record_decrypt(self):
+
+    def record_decrypt(self) -> None:
         self.decrypt_count += 1
         self.last_used_at = time.time()
-    
+
     @property
     def total_operations(self) -> int:
         return self.encrypt_count + self.decrypt_count
-    
+
     @property
     def age_seconds(self) -> float:
         return time.time() - self.created_at
-    
+
     def should_expire(self) -> bool:
         """Check if key should be rotated based on policy."""
         if self.max_lifetime_seconds > 0 and self.age_seconds > self.max_lifetime_seconds:
@@ -58,13 +58,13 @@ class KeyMetadata:
 class KeyRotationManager:
     """
     Manages key rotation policies and tracks key lifecycle.
-    
+
     Policies:
     - Time-based: Keys expire after N seconds
     - Usage-based: Keys expire after N operations
     - Both can be combined (whichever triggers first)
     """
-    
+
     def __init__(
         self,
         default_max_lifetime: float = 0.0,  # seconds, 0 = unlimited
@@ -73,9 +73,13 @@ class KeyRotationManager:
         self._metadata: Dict[str, KeyMetadata] = {}
         self._default_max_lifetime = default_max_lifetime
         self._default_max_operations = default_max_operations
-    
-    def register_key(self, key_id: str, max_lifetime: float = None,
-                     max_operations: int = None) -> KeyMetadata:
+
+    def register_key(
+        self,
+        key_id: str,
+        max_lifetime: Optional[float] = None,
+        max_operations: Optional[int] = None,
+    ) -> KeyMetadata:
         """Register a new key with rotation policy."""
         meta = KeyMetadata(
             key_id=key_id,
@@ -90,8 +94,8 @@ class KeyRotationManager:
         )
         self._metadata[key_id] = meta
         return meta
-    
-    def record_usage(self, key_id: str, operation: str = "encrypt"):
+
+    def record_usage(self, key_id: str, operation: str = "encrypt") -> None:
         """Record key usage for rotation tracking."""
         if key_id in self._metadata:
             meta = self._metadata[key_id]
@@ -99,24 +103,24 @@ class KeyRotationManager:
                 meta.record_encrypt()
             elif operation == "decrypt":
                 meta.record_decrypt()
-    
+
     def needs_rotation(self, key_id: str) -> bool:
         """Check if a key needs rotation."""
         if key_id not in self._metadata:
             return False
         return self._metadata[key_id].should_expire()
-    
-    def expire_key(self, key_id: str, rotated_to: str = ""):
+
+    def expire_key(self, key_id: str, rotated_to: str = "") -> None:
         """Mark a key as expired."""
         if key_id in self._metadata:
             self._metadata[key_id].is_expired = True
             self._metadata[key_id].rotated_to = rotated_to
-    
+
     def get_metadata(self, key_id: str) -> Optional[KeyMetadata]:
         """Get key metadata."""
         return self._metadata.get(key_id)
-    
-    def list_keys(self) -> List[Dict]:
+
+    def list_keys(self) -> List[Dict[str, object]]:
         """List all keys with rotation status."""
         result = []
         for key_id, meta in self._metadata.items():
@@ -133,7 +137,7 @@ class KeyRotationManager:
                 "max_operations": meta.max_operations,
             })
         return result
-    
+
     def get_expiring_keys(self, warning_seconds: float = 3600) -> List[str]:
         """Get keys that will expire within the warning window."""
         expiring = []
