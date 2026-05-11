@@ -64,6 +64,11 @@ This section is intentionally limited to claims that are verifiable from this re
 | AI-agent integrations | [abir_guard/langchain.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/langchain.py), [abir_guard/crewai.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/crewai.py), [abir_guard/mcp_http.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/mcp_http.py) | ✅ Present |
 | Multi-language SDKs | [abir_guard](https://github.com/Abiress/abir-guard/tree/master/abir_guard), [src](https://github.com/Abiress/abir-guard/tree/master/src), [sdk/go](https://github.com/Abiress/abir-guard/tree/master/sdk/go), [sdk/js](https://github.com/Abiress/abir-guard/tree/master/sdk/js) | ✅ Present |
 | Hardware security hooks | [abir_guard/yubikey_integration.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/yubikey_integration.py), [abir_guard/tpm2_seal.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/tpm2_seal.py), [abir_guard/hardware_enclave.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/hardware_enclave.py) | ✅ Present |
+| Cloud KMS envelope module | [abir_guard/cloud_kms.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/cloud_kms.py) | ✅ Present |
+| HashiCorp Vault transit client | [abir_guard/hashicorp_vault.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/hashicorp_vault.py) | ✅ Present |
+| Kubernetes operator helpers | [abir_guard/kubernetes_operator.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/kubernetes_operator.py) | ✅ Present |
+| Multi-tenant RBAC module | [abir_guard/rbac.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/rbac.py) | ✅ Present |
+| OpenTelemetry facade | [abir_guard/telemetry.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/telemetry.py) | ✅ Present |
 | FIPS-mode policy module | [abir_guard/fips_mode.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/fips_mode.py) | ✅ Present |
 | Auto key rotation | [abir_guard/rotation.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/rotation.py), [src/rotation.rs](https://github.com/Abiress/abir-guard/blob/master/src/rotation.rs) | ✅ Present |
 | Remote attestation | [abir_guard/attestation.py](https://github.com/Abiress/abir-guard/blob/master/abir_guard/attestation.py), [src/confidential_computing](https://github.com/Abiress/abir-guard/tree/master/src/confidential_computing) | ✅ Present |
@@ -75,11 +80,11 @@ This section is intentionally limited to claims that are verifiable from this re
 | Metric | Command | Result |
 |---|---|---|
 | Rust release binary size | `ls -lh target/release/abir-guard` | `766K` |
-| Rust CLI startup footprint | `/usr/bin/time ./target/release/abir-guard --help` | `0.00s`, `2744 KB` max RSS |
-| Rust lib tests (release) | `cargo test --lib --release` | `176/176` passing, tests finished in `0.58s` |
+| Rust CLI startup footprint | `/usr/bin/time ./target/release/abir-guard --help` | `0.00s`, `2688 KB` max RSS |
+| Rust lib tests (release) | `cargo test --lib --release` | `176/176` passing, tests finished in `0.67s` |
 | Python SDK throughput | 5000 keygen+encrypt+decrypt loop | `18,956 ops/s` |
-| Python SDK memory | same benchmark via `/usr/bin/time` | `48,200 KB` max RSS |
-| Go SDK representative path | `go test -run TestEncryptDecrypt -v ./...` | pass, `0.09s`, `82,704 KB` max RSS |
+| Python SDK memory | same benchmark via `/usr/bin/time` | `48,204 KB` max RSS |
+| Go SDK representative path | `go test -run TestEncryptDecrypt -v ./...` | pass, `0.03s`, `25,688 KB` max RSS |
 
 ### Scope Note
 
@@ -882,12 +887,14 @@ abir_guard/
 
 - [ ] **Real YubiKey/FIDO2 Hardware** — FIDO2/CTAP2 operations, touch confirmation, PIV slot management
 - [ ] **Native TPM 2.0 API** — `tpm2-tss` library integration, PCR policy automation
-- [ ] **AWS KMS / GCP KMS Integration** — Cloud KMS backends, envelope encryption
-- [ ] **HashiCorp Vault Integration** — Vault transit engine backend, enterprise secret management
-- [ ] **Kubernetes Operator** — Auto-inject vault sidecars, secret rotation, Helm charts
-- [ ] **Multi-Tenant Support** — Organization/workspace isolation, RBAC, audit partitioning
+- [x] **AWS KMS / GCP KMS Integration (SDK foundation)** — Cloud KMS envelope module implemented in `abir_guard/cloud_kms.py` (AWS/GCP clients + mock backend)
+- [x] **HashiCorp Vault Integration (SDK foundation)** — Vault transit client implemented in `abir_guard/hashicorp_vault.py`
+- [x] **Kubernetes Operator (manifest foundation)** — Sidecar injection patch, rotation CronJob, Helm values builders in `abir_guard/kubernetes_operator.py`
+- [x] **Multi-Tenant Support (RBAC foundation)** — Organization/workspace-scoped RBAC manager and audit partition key in `abir_guard/rbac.py`
 - [ ] **Performance Benchmarking** — Async I/O, connection pooling, 10k ops/sec target
-- [ ] **OpenTelemetry Integration** — Metrics, traces, distributed tracing for vault operations
+- [x] **OpenTelemetry Integration (facade foundation)** — Metrics/tracing facade with graceful fallback in `abir_guard/telemetry.py`
+
+**Phase 4 status note:** foundations are implemented for KMS, Vault Transit, Kubernetes manifests, RBAC, and telemetry. Remaining items above still require full production wiring (live cloud credentials/environments, native TPM2-TSS API path, real hardware validation, and 10k ops/sec target achievement).
 
 ### 🔐 Phase 5: Advanced AI Security & Compliance (Q2 2026)
 

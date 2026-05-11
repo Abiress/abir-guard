@@ -149,6 +149,23 @@ __all__ = [
     "KeyRotationManager",
     "IntegrityProof",
     "AttestationVerifier",
+    "CloudKmsEnvelope",
+    "AwsKmsBackend",
+    "GcpKmsBackend",
+    "LocalMockKmsBackend",
+    "EnvelopeCiphertext",
+    "VaultTransitClient",
+    "VaultTransitConfig",
+    "KubernetesOperator",
+    "SidecarConfig",
+    "RotationPolicy",
+    "RbacManager",
+    "RbacError",
+    "Permission",
+    "Role",
+    "Principal",
+    "VaultTelemetry",
+    "OperationMetric",
 ]
 
 
@@ -653,4 +670,53 @@ def __getattr__(name):
     elif name == "HardwareEnclave":
         from .hardware_enclave import HardwareEnclave
         return HardwareEnclave
+    elif name in {
+        "CloudKmsEnvelope",
+        "AwsKmsBackend",
+        "GcpKmsBackend",
+        "LocalMockKmsBackend",
+        "EnvelopeCiphertext",
+    }:
+        from .cloud_kms import (
+            AwsKmsBackend,
+            CloudKmsEnvelope,
+            EnvelopeCiphertext,
+            GcpKmsBackend,
+            LocalMockKmsBackend,
+        )
+        return {
+            "CloudKmsEnvelope": CloudKmsEnvelope,
+            "AwsKmsBackend": AwsKmsBackend,
+            "GcpKmsBackend": GcpKmsBackend,
+            "LocalMockKmsBackend": LocalMockKmsBackend,
+            "EnvelopeCiphertext": EnvelopeCiphertext,
+        }[name]
+    elif name in {"VaultTransitClient", "VaultTransitConfig"}:
+        from .hashicorp_vault import VaultTransitClient, VaultTransitConfig
+        return {
+            "VaultTransitClient": VaultTransitClient,
+            "VaultTransitConfig": VaultTransitConfig,
+        }[name]
+    elif name in {"KubernetesOperator", "SidecarConfig", "RotationPolicy"}:
+        from .kubernetes_operator import KubernetesOperator, RotationPolicy, SidecarConfig
+        return {
+            "KubernetesOperator": KubernetesOperator,
+            "SidecarConfig": SidecarConfig,
+            "RotationPolicy": RotationPolicy,
+        }[name]
+    elif name in {"RbacManager", "RbacError", "Permission", "Role", "Principal"}:
+        from .rbac import Permission, Principal, RbacError, RbacManager, Role
+        return {
+            "RbacManager": RbacManager,
+            "RbacError": RbacError,
+            "Permission": Permission,
+            "Role": Role,
+            "Principal": Principal,
+        }[name]
+    elif name in {"VaultTelemetry", "OperationMetric"}:
+        from .telemetry import OperationMetric, VaultTelemetry
+        return {
+            "VaultTelemetry": VaultTelemetry,
+            "OperationMetric": OperationMetric,
+        }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
