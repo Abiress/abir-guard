@@ -44,3 +44,7 @@ htmlcov/
 # ML-KEM test data
 *.pem
 *.key
+
+# Local-only planning and test sources
+V3.2.0_ROADMAP.md
+tests/
