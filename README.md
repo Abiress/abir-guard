@@ -354,9 +354,8 @@ go get github.com/Abiress/abir-guard/sdk/go
 git clone https://github.com/Abiress/abir-guard.git
 cd abir-guard
 
-# Python: install and test
+# Python: install package
 pip install -e ".[dev]"
-python3 tests/run_tests.py
 
 # Rust: build and test
 cargo build --release && cargo test
@@ -365,7 +364,7 @@ cargo build --release && cargo test
 cd sdk/go && go test -v && cd ../..
 
 # JavaScript: verify (Node.js)
-node -e "const { AbirGuard } = require('./src/abir_guard'); new AbirGuard().generateKeyPair('test').then(console.log)"
+node -e "const { AbirGuard } = require('./sdk/js/abir_guard'); new AbirGuard().generateKeyPair('test').then(console.log)"
 ```
 
 ---
@@ -763,25 +762,16 @@ This project aligns with and supports:
 
 ---
 
-## Run Tests
+## Validation
 
 ```bash
-# Full test suite (recommended before deployment)
-cargo build --release && cargo test && \
-python3 tests/run_tests.py && \
-pytest tests/test_abir_guard.py tests/test_phase3.py -v && \
-cd sdk/go && go test -v && cd ../..
-
-# Individual test suites
-cargo test                          # Rust: 32 tests
-pytest tests/test_abir_guard.py -v  # Python Phase 1: 17 tests
-pytest tests/test_phase3.py -v      # Python Phase 3: 24 tests
-pytest tests/test_phase2_hardware.py -v  # Python Phase 2: 24 tests
-cd sdk/go && go test -v             # Go: 12 tests
-python3 tests/run_tests.py          # Manual suites: 5/5
+# Core validation from this public source tree
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets
+cd sdk/go && go test -v ./... && cd ../..
 ```
 
-**All 109 tests pass across Rust, Python, and Go.**
+**Note:** internal roadmap and Python test harness files may be kept local-only in some release workflows.
 
 ---
 
@@ -827,11 +817,7 @@ abir_guard/
 │   └── js/                  # JavaScript SDK (Node.js crypto + MCP client)
 │       └── abir_guard.js    # Basic vault + MCP client
 ├── examples/                # Usage examples
-├── tests/                   # Test suites (Python)
-│   ├── run_tests.py         # Manual test runner (5 suites)
-│   ├── test_abir_guard.py   # Pytest Phase 1 (17 tests)
-│   ├── test_phase2_hardware.py # Pytest Phase 2 (24 tests)
-│   └── test_phase3.py       # Pytest Phase 3 (24 tests)
+├── tests/                   # Optional local test suites (may be excluded from published tree)
 ├── scripts/                 # Publishing and debugging scripts
 │   ├── publish-pypi.sh      # PyPI publishing script
 │   ├── publish-crates.sh    # crates.io publishing script
