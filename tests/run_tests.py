@@ -120,7 +120,7 @@ def test_js_sdk():
     print("TEST 5: JavaScript SDK File")
     print("="*60)
     
-    js_path = os.path.join(os.path.dirname(__file__), '../src/abir_guard.js')
+    js_path = os.path.join(os.path.dirname(__file__), '../sdk/js/abir_guard.js')
     with open(js_path, "r") as f:
         content = f.read()
         if "AbirGuard" in content:
