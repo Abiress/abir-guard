@@ -1,11 +1,11 @@
-# Abir-Guard v3.1.1 — Quantum-Resilient Agentic Vault for AI Agent Memory
+# Abir-Guard v3.1.2 — Quantum-Resilient Agentic Vault for AI Agent Memory
 
 <p align="center">
   <strong>The first post-quantum vault built specifically for AI agents. Protects agent memory against Harvest Now, Decrypt Later attacks with NIST-standard ML-KEM-1024 + ML-DSA-65.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/version-3.1.1-blue?style=for-the-badge&logo=github" alt="Version 3.1.1"></a>
+  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/version-3.1.2-blue?style=for-the-badge&logo=github" alt="Version 3.1.2"></a>
   <a href="https://pypi.org/project/abir-guard/"><img src="https://img.shields.io/pypi/v/abir-guard?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
   <a href="https://crates.io/crates/abir_guard"><img src="https://img.shields.io/crates/v/abir_guard?style=for-the-badge&logo=rust&logoColor=white&label=crates.io" alt="crates.io"></a>
   <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Python-3.10%2B-green?style=for-the-badge&logo=python" alt="Python 3.10+"></a>
