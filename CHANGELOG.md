@@ -8,6 +8,17 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ### Added
 
+- **Phase 6 foundations implemented (Python):**
+  - Added `abir_guard/federated_vault.py` with signed LWW-CRDT replication for federated vault sync and conflict resolution.
+  - Added `abir_guard/qkd_network.py` with BB84-style QKD session simulation (QBER gate + transport key derivation).
+  - Added `abir_guard/pq_tls.py` with hybrid ML-KEM + X25519 TLS bootstrap and TLS 1.3 context helpers.
+  - Added `abir_guard/wasm_edge.py` with browser/Deno/Cloudflare WASM target specifications.
+  - Added `abir_guard/native_enclave.py` with Apple Secure Enclave and Intel SGX native-path attestation metadata surfaces.
+  - Added `abir_guard/did_identity.py` with DID document and verifiable credential primitives.
+  - Added `abir_guard/hsm_cluster.py` with weighted routing, health checks, and region failover.
+  - Added `PHASE6_GUIDE.md` with implementation and deployment guidance.
+  - Added `tests/test_phase6.py` for Phase 6 module validation.
+
 - **Phase 4 completion updates (Python):**
   - Added `abir_guard/performance_benchmark.py` with async benchmark runner (`Phase4Benchmark`) and target assertion helper (`BenchmarkResult`, `meets_target`).
   - Added YubiKey production-facing hardware helpers in `abir_guard/yubikey_integration.py`:
@@ -33,6 +44,7 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 - Extended lazy exports in `abir_guard/__init__.py` to include all Phase 5 classes and helpers.
 - Extended lazy exports in `abir_guard/__init__.py` to include `Phase4Benchmark` and `BenchmarkResult`.
+- Extended lazy exports in `abir_guard/__init__.py` to include all Phase 6 classes and helpers.
 
 ### Validation
 
@@ -42,6 +54,8 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 - `pytest tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase5.py -v`: passing (`71/71` tests).
 - `cd sdk/go && go test -v ./...`: passing.
 - `node sdk/js/abir_guard_test.js`: passing (`js_phase5_ok`).
+- `pytest tests/test_pentest.py tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase4_performance.py tests/test_phase5.py tests/test_phase6.py -q`: passing (`165` tests).
+- `pytest tests/test_phase6.py -q`: passing (`8` tests).
 
 ### Benchmarks
 

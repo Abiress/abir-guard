@@ -190,6 +190,24 @@ __all__ = [
     "AIRedTeamRunner",
     "RedTeamScenario",
     "RedTeamResult",
+    "FederatedVaultNode",
+    "CrdtRecord",
+    "Bb84Network",
+    "QkdSession",
+    "PostQuantumTls",
+    "HybridTlsSecrets",
+    "WasmEdgeBuilder",
+    "WasmTarget",
+    "AppleSecureEnclaveNative",
+    "IntelSgxNative",
+    "EnclaveReport",
+    "DidIdentityManager",
+    "DidDocument",
+    "VerificationMethod",
+    "VerifiableCredential",
+    "HsmCluster",
+    "HsmClusterError",
+    "ClusterProvider",
 ]
 
 
@@ -802,5 +820,51 @@ def __getattr__(name):
             "AIRedTeamRunner": AIRedTeamRunner,
             "RedTeamScenario": RedTeamScenario,
             "RedTeamResult": RedTeamResult,
+        }[name]
+    elif name in {"FederatedVaultNode", "CrdtRecord"}:
+        from .federated_vault import CrdtRecord, FederatedVaultNode
+        return {
+            "FederatedVaultNode": FederatedVaultNode,
+            "CrdtRecord": CrdtRecord,
+        }[name]
+    elif name in {"Bb84Network", "QkdSession"}:
+        from .qkd_network import Bb84Network, QkdSession
+        return {
+            "Bb84Network": Bb84Network,
+            "QkdSession": QkdSession,
+        }[name]
+    elif name in {"PostQuantumTls", "HybridTlsSecrets"}:
+        from .pq_tls import HybridTlsSecrets, PostQuantumTls
+        return {
+            "PostQuantumTls": PostQuantumTls,
+            "HybridTlsSecrets": HybridTlsSecrets,
+        }[name]
+    elif name in {"WasmEdgeBuilder", "WasmTarget"}:
+        from .wasm_edge import WasmEdgeBuilder, WasmTarget
+        return {
+            "WasmEdgeBuilder": WasmEdgeBuilder,
+            "WasmTarget": WasmTarget,
+        }[name]
+    elif name in {"AppleSecureEnclaveNative", "IntelSgxNative", "EnclaveReport"}:
+        from .native_enclave import AppleSecureEnclaveNative, EnclaveReport, IntelSgxNative
+        return {
+            "AppleSecureEnclaveNative": AppleSecureEnclaveNative,
+            "IntelSgxNative": IntelSgxNative,
+            "EnclaveReport": EnclaveReport,
+        }[name]
+    elif name in {"DidIdentityManager", "DidDocument", "VerificationMethod", "VerifiableCredential"}:
+        from .did_identity import DidDocument, DidIdentityManager, VerifiableCredential, VerificationMethod
+        return {
+            "DidIdentityManager": DidIdentityManager,
+            "DidDocument": DidDocument,
+            "VerificationMethod": VerificationMethod,
+            "VerifiableCredential": VerifiableCredential,
+        }[name]
+    elif name in {"HsmCluster", "HsmClusterError", "ClusterProvider"}:
+        from .hsm_cluster import ClusterProvider, HsmCluster, HsmClusterError
+        return {
+            "HsmCluster": HsmCluster,
+            "HsmClusterError": HsmClusterError,
+            "ClusterProvider": ClusterProvider,
         }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
