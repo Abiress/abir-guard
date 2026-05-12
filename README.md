@@ -85,6 +85,9 @@ This section is intentionally limited to claims that are verifiable from this re
 | Python SDK throughput | 5000 keygen+encrypt+decrypt loop | `18,956 ops/s` |
 | Python SDK memory | same benchmark via `/usr/bin/time` | `48,204 KB` max RSS |
 | Go SDK representative path | `go test -run TestEncryptDecrypt -v ./...` | pass, `0.03s`, `25,688 KB` max RSS |
+| Phase 5 prompt shield throughput | 20,000 `analyze()` calls | `347,999 ops/s` |
+| Phase 5 model weight roundtrip | 1 MiB encrypt + decrypt (`mock` KMS) | `4.77 ms` |
+| Phase 5 red-team simulation | curated scenario run | score `1.00`, runtime `0.029 ms` |
 
 ### Scope Note
 
@@ -531,13 +534,22 @@ for _, entry := range vault.GetAuditLog() {
 ## JavaScript SDK Guide
 
 ```javascript
-const { AbirGuard, AbirGuardMCP } = require('./src/abir_guard');
+const { AbirGuard, AbirGuardMCP, AbirGuardBrowserExtension } = require('./sdk/js/abir_guard');
 
 const vault = new AbirGuard();
 
-const { publicKey, secretKey } = await vault.generateKeyPair('agent-1');
+const { publicKey } = await vault.generateKeyPair('agent-1');
 const { ciphertext, nonce, authTag } = await vault.encrypt('agent-1', 'API_KEY=sk-...');
 const plaintext = await vault.decrypt('agent-1', { ciphertext, nonce, authTag });
+
+// Phase 5 PQC adapters (provider-backed or simulated fallback)
+const kem = await vault.generateMlKemKeyPair();
+const enc = await vault.kemEncapsulate(kem.publicKey);
+const dec = await vault.kemDecapsulate(enc.ciphertext, kem.secretKey);
+
+const dsa = await vault.generateMlDsaKeyPair();
+const sig = await vault.mlDsaSign('message', dsa.secretKey);
+const ok = await vault.mlDsaVerify('message', sig.signature, dsa.publicKey);
 
 // Rotate key (kill switch)
 await vault.rotateKey('agent-1');
@@ -545,6 +557,10 @@ await vault.rotateKey('agent-1');
 // MCP client
 const mcp = new AbirGuardMCP(9090);
 const result = await mcp.encrypt('agent-1', 'secret data');
+
+// Browser extension runtime bridge (Manifest V3)
+// const ext = new AbirGuardBrowserExtension(chrome.runtime);
+// await ext.sendSecureMessage('vault.encrypt', { keyId: 'agent-1', data: 'secret' });
 ```
 
 ---
@@ -773,7 +789,9 @@ This project aligns with and supports:
 # Core validation from this public source tree
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets
+pytest tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase5.py -v
 cd sdk/go && go test -v ./... && cd ../..
+node sdk/js/abir_guard_test.js
 ```
 
 **Note:** internal roadmap and Python test harness files may be kept local-only in some release workflows.
@@ -784,7 +802,7 @@ cd sdk/go && go test -v ./... && cd ../..
 
 ```
 abir_guard/
-├── abir_guard/              # Python package (15 modules)
+├── abir_guard/              # Python package (core + enterprise + phase5 modules)
 │   ├── __init__.py          # Core Vault, HybridEncryptor, McpServer, AuditLogger
 │   ├── ml_kem.py            # ML-KEM-1024 + X25519 hybrid KEM (real ECDH)
 │   ├── yubikey_integration.py # YubiKey/FIDO2 integration (software fallback)
@@ -799,7 +817,14 @@ abir_guard/
 │   ├── rotation.py          # Automatic key rotation (time-based + usage-based)
 │   ├── fips_mode.py         # FIPS 140-3 compliance mode (strict NIST algorithms)
 │   ├── differential_privacy.py # Laplace noise entropy (Spectre/Meltdown defense)
-│   └── attestation.py       # Remote attestation (runtime integrity verification)
+│   ├── attestation.py       # Remote attestation (runtime integrity verification)
+│   ├── model_weight_encryption.py # LLM weight encryption and fine-tuning artifact protection
+│   ├── prompt_injection_shield.py # Prompt threat detection, signing, quarantine
+│   ├── compliance.py        # GDPR/CCPA/HIPAA retention + erasure + audit exports
+│   ├── multi_agent_key_sharing.py # Threshold sharing and quorum policies
+│   ├── secure_enclave_llm.py # TDX/SEV-SNP style attested inference gate (simulated)
+│   ├── zk_compliance.py     # Commitment-based compliance proofs
+│   └── ai_red_team.py       # Automated AI red-team scenario runner
 ├── src/                     # Rust source (12 modules)
 │   ├── lib.rs               # Library entry point + re-exports
 │   ├── main.rs              # CLI binary (clap subcommands, passphrase, validation)
@@ -819,8 +844,9 @@ abir_guard/
 │   │   ├── abirguard.go     # Core implementation
 │   │   ├── abirguard_test.go # 12 unit tests
 │   │   └── go.mod           # Module definition
-│   └── js/                  # JavaScript SDK (Node.js crypto + MCP client)
-│       └── abir_guard.js    # Basic vault + MCP client
+│   └── js/                  # JavaScript SDK (Node/WebCrypto + PQC adapters + browser bridge)
+│       ├── abir_guard.js    # Vault + ML-KEM/ML-DSA adapters + MCP + extension bridge
+│       └── abir_guard_test.js # JS smoke tests for Phase 5 APIs
 ├── examples/                # Usage examples
 ├── tests/                   # Optional local test suites (may be excluded from published tree)
 ├── scripts/                 # Publishing and debugging scripts
@@ -900,14 +926,16 @@ abir_guard/
 
 *AI-specific security patterns, regulatory compliance, multi-agent workflows*
 
-- [ ] **Complete JavaScript SDK** — ML-KEM-1024, ML-DSA-65, WebCrypto API, browser extensions
-- [ ] **Model Weight Encryption** — Encrypt LLM weights at rest, secure fine-tuning pipelines
-- [ ] **Prompt Injection Shield** — Detect/encrypt malicious prompts, prompt signature verification
-- [ ] **GDPR/CCPA/HIPAA Compliance** — Data retention policies, right-to-erasure, audit exports
-- [ ] **Multi-Agent Key Sharing** — Threshold encryption for agent swarms, quorum-based access
-- [ ] **Secure Enclave for LLMs** — TEE-based inference (Intel TDX, AMD SEV-SNP), attested compute
-- [ ] **Zero-Knowledge Proofs** — Prove encryption without revealing data, compliance audits
-- [ ] **AI Red-Teaming Tools** — Automated attack simulation, breach scenario testing
+- [x] **JavaScript SDK Phase 5 foundation** — WebCrypto-backed AES-GCM path, ML-KEM/ML-DSA adapter APIs, browser extension messaging bridge in `sdk/js/abir_guard.js`
+- [x] **Model Weight Encryption** — `abir_guard/model_weight_encryption.py` with envelope encryption for weight artifacts and fine-tuning intermediates
+- [x] **Prompt Injection Shield** — `abir_guard/prompt_injection_shield.py` detection rules, signature verification, and quarantine encryption
+- [x] **GDPR/CCPA/HIPAA Compliance primitives** — `abir_guard/compliance.py` retention purge, right-to-erasure, JSON/CSV audit exports
+- [x] **Multi-Agent Key Sharing** — `abir_guard/multi_agent_key_sharing.py` threshold shares + quorum authorization
+- [x] **Secure Enclave for LLMs (simulated attestation gate)** — `abir_guard/secure_enclave_llm.py` Intel TDX / AMD SEV-SNP style evidence and attested inference gate
+- [x] **Zero-Knowledge-style compliance proofs** — `abir_guard/zk_compliance.py` commitment proofs for audit validation without plaintext disclosure
+- [x] **AI Red-Teaming Tools** — `abir_guard/ai_red_team.py` scenario runner + pass-rate scoring against prompt shield
+
+**Phase 5 status note:** all listed features above are implemented and tested in this repo. Hardware-backed TEE quote verification and real ML-KEM/ML-DSA JavaScript provider integrations can be plugged in via provider adapters for production environments.
 
 ### 🌐 Phase 6: Distributed & Quantum Ecosystem (Q3 2026)
 

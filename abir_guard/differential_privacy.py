@@ -21,6 +21,7 @@ import time
 import math
 import hashlib
 import random
+import struct
 from typing import List, Optional
 
 
@@ -46,7 +47,14 @@ class LaplaceNoise:
         Larger scale = more noise = stronger privacy.
         """
         scale = sensitivity / self.epsilon
-        u = random.uniform(-0.5, 0.5)
+        # Use OS CSPRNG for uniform sample — random.uniform is NOT cryptographically secure
+        raw = os.urandom(8)
+        int_val = struct.unpack('<Q', raw)[0]
+        u = (int_val / (2 ** 64)) - 0.5
+        # Clamp away from exact ±0.5 to avoid log(0)
+        epsilon_guard = 1e-15
+        if abs(u) >= 0.5 - epsilon_guard:
+            u = math.copysign(0.5 - epsilon_guard, u)
         return -scale * math.copysign(math.log(1 - 2 * abs(u)), u)
     
     def add_noise(self, value: float, sensitivity: float = 1.0) -> float:

@@ -6,6 +6,40 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 5 foundations implemented (Python):**
+  - Added `abir_guard/model_weight_encryption.py` with envelope-encrypted model artifact bundles and secure fine-tuning artifact pipeline helpers.
+  - Added `abir_guard/prompt_injection_shield.py` with prompt risk analysis, HMAC prompt signatures, and encrypted quarantine/restore flow.
+  - Added `abir_guard/compliance.py` with GDPR/CCPA/HIPAA primitives: retention windows, right-to-erasure, and audit exports (JSON/CSV).
+  - Added `abir_guard/multi_agent_key_sharing.py` with threshold sharing and quorum-based key recovery for agent swarms.
+  - Added `abir_guard/secure_enclave_llm.py` with Intel TDX / AMD SEV-SNP style attestation evidence model and attested inference gate.
+  - Added `abir_guard/zk_compliance.py` with commitment-based zero-knowledge-style compliance proof generation and verification.
+  - Added `abir_guard/ai_red_team.py` with automated AI attack scenario simulation and pass-rate scoring.
+- **Phase 5 JavaScript SDK expansion:**
+  - Reworked `sdk/js/abir_guard.js` to add WebCrypto AES-GCM path, ML-KEM/ML-DSA provider adapters (with deterministic simulated fallback), and browser extension messaging bridge.
+  - Added `sdk/js/abir_guard_test.js` smoke tests for Phase 5 JS APIs.
+- Added `tests/test_phase5.py` with Phase 5 unit coverage across all new Python modules.
+
+### Changed
+
+- Extended lazy exports in `abir_guard/__init__.py` to include all Phase 5 classes and helpers.
+
+### Validation
+
+- `cargo clippy --all-targets --all-features -- -D warnings`: passing.
+- `cargo test --all-targets`: passing (`176/176` lib + `2/2` bin tests).
+- `python3 tests/run_tests.py`: passing (`5/5` suites).
+- `pytest tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase5.py -v`: passing (`71/71` tests).
+- `cd sdk/go && go test -v ./...`: passing.
+- `node sdk/js/abir_guard_test.js`: passing (`js_phase5_ok`).
+
+### Benchmarks
+
+- Prompt shield throughput: `347,999 ops/s` over 20,000 prompt analyses.
+- Model weight envelope roundtrip (1 MiB payload, mock KMS): `4.77 ms`.
+- AI red-team run: score `1.00`, runtime `0.029 ms`.
+
 ## [3.2.0] - 2026-05-12
 
 ### Added

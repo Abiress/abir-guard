@@ -109,6 +109,10 @@ class AuditLogger:
     def verify_integrity(self) -> bool:
         """Verify hash chain integrity. Returns False if tampering detected."""
         for i, entry in enumerate(self._entries):
+            # First entry must have no prev_hash (genesis entry).
+            # If it does, the beginning of the chain was truncated.
+            if i == 0 and "prev_hash" in entry:
+                return False
             # Recompute hash
             check = entry.copy()
             check.pop("hash", None)
@@ -166,6 +170,24 @@ __all__ = [
     "Principal",
     "VaultTelemetry",
     "OperationMetric",
+    "ModelWeightEncryptor",
+    "EncryptedModelBundle",
+    "PromptInjectionShield",
+    "PromptShieldDecision",
+    "EncryptedPrompt",
+    "ComplianceManager",
+    "ComplianceRecord",
+    "MultiAgentKeySharing",
+    "AgentShare",
+    "QuorumPolicy",
+    "SecureEnclaveLLM",
+    "AttestationEvidence",
+    "ZkComplianceProver",
+    "ZkComplianceVerifier",
+    "ComplianceProof",
+    "AIRedTeamRunner",
+    "RedTeamScenario",
+    "RedTeamResult",
 ]
 
 
@@ -330,12 +352,17 @@ class Vault:
         from .fips_mode import FIPSEncryptor
         self.fips_mode = True
         self._fips_encryptor = FIPSEncryptor()
+        # Block X25519 fallback in ML-KEM — only ML-KEM-1024 allowed
+        from .ml_kem import MLKEM1024
+        MLKEM1024.enable_fips_mode(True)
         self.audit.log("fips_enabled", "", True)
     
     def disable_fips_mode(self) -> None:
         """Disable FIPS 140-3 compliance mode"""
         self.fips_mode = False
         self._fips_encryptor = None
+        from .ml_kem import MLKEM1024
+        MLKEM1024.enable_fips_mode(False)
         self.audit.log("fips_disabled", "", True)
     
     def verify_runtime_integrity(self, challenge: str = None) -> bool:
@@ -391,11 +418,12 @@ class Vault:
         # Use FIPS mode if enabled
         if self.fips_mode and self._fips_encryptor:
             key_bytes = self.secret_keys[key_id]
-            encrypted = self._fips_encryptor.encrypt(plaintext, key_bytes)
+            fips_result = self._fips_encryptor.encrypt(plaintext, key_bytes)
+            # fips_result is {"nonce": bytes, "ciphertext": bytes, "auth_tag": bytes}
             return Ciphertext(
-                nonce=base64.b64encode(b"fips").decode(),
-                ciphertext=base64.b64encode(encrypted).decode(),
-                auth_tag=""
+                nonce=base64.b64encode(fips_result["nonce"]).decode(),
+                ciphertext=base64.b64encode(fips_result["ciphertext"]).decode(),
+                auth_tag=base64.b64encode(fips_result["auth_tag"]).decode(),
             )
         
         ct = self.encryptor.encrypt(plaintext, self.keypairs[key_id])
@@ -433,8 +461,10 @@ class Vault:
         # Use FIPS mode if enabled
         if self.fips_mode and self._fips_encryptor:
             key_bytes = self.secret_keys[key_id]
-            encrypted = base64.b64decode(ciphertext.ciphertext)
-            plaintext = self._fips_encryptor.decrypt(encrypted, None, None, key_bytes)
+            ct_bytes = base64.b64decode(ciphertext.ciphertext)
+            tag_bytes = base64.b64decode(ciphertext.auth_tag) if ciphertext.auth_tag else b""
+            nonce_bytes = base64.b64decode(ciphertext.nonce)
+            plaintext = self._fips_encryptor.decrypt(ct_bytes, tag_bytes, nonce_bytes, key_bytes)
             self.audit.log("decrypt", key_id, True)
             return plaintext
         
@@ -718,5 +748,51 @@ def __getattr__(name):
         return {
             "VaultTelemetry": VaultTelemetry,
             "OperationMetric": OperationMetric,
+        }[name]
+    elif name in {"ModelWeightEncryptor", "EncryptedModelBundle"}:
+        from .model_weight_encryption import EncryptedModelBundle, ModelWeightEncryptor
+        return {
+            "ModelWeightEncryptor": ModelWeightEncryptor,
+            "EncryptedModelBundle": EncryptedModelBundle,
+        }[name]
+    elif name in {"PromptInjectionShield", "PromptShieldDecision", "EncryptedPrompt"}:
+        from .prompt_injection_shield import EncryptedPrompt, PromptInjectionShield, PromptShieldDecision
+        return {
+            "PromptInjectionShield": PromptInjectionShield,
+            "PromptShieldDecision": PromptShieldDecision,
+            "EncryptedPrompt": EncryptedPrompt,
+        }[name]
+    elif name in {"ComplianceManager", "ComplianceRecord"}:
+        from .compliance import ComplianceManager, ComplianceRecord
+        return {
+            "ComplianceManager": ComplianceManager,
+            "ComplianceRecord": ComplianceRecord,
+        }[name]
+    elif name in {"MultiAgentKeySharing", "AgentShare", "QuorumPolicy"}:
+        from .multi_agent_key_sharing import AgentShare, MultiAgentKeySharing, QuorumPolicy
+        return {
+            "MultiAgentKeySharing": MultiAgentKeySharing,
+            "AgentShare": AgentShare,
+            "QuorumPolicy": QuorumPolicy,
+        }[name]
+    elif name in {"SecureEnclaveLLM", "AttestationEvidence"}:
+        from .secure_enclave_llm import AttestationEvidence, SecureEnclaveLLM
+        return {
+            "SecureEnclaveLLM": SecureEnclaveLLM,
+            "AttestationEvidence": AttestationEvidence,
+        }[name]
+    elif name in {"ZkComplianceProver", "ZkComplianceVerifier", "ComplianceProof"}:
+        from .zk_compliance import ComplianceProof, ZkComplianceProver, ZkComplianceVerifier
+        return {
+            "ZkComplianceProver": ZkComplianceProver,
+            "ZkComplianceVerifier": ZkComplianceVerifier,
+            "ComplianceProof": ComplianceProof,
+        }[name]
+    elif name in {"AIRedTeamRunner", "RedTeamScenario", "RedTeamResult"}:
+        from .ai_red_team import AIRedTeamRunner, RedTeamResult, RedTeamScenario
+        return {
+            "AIRedTeamRunner": AIRedTeamRunner,
+            "RedTeamScenario": RedTeamScenario,
+            "RedTeamResult": RedTeamResult,
         }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

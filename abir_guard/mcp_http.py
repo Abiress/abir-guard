@@ -16,7 +16,9 @@ import hashlib
 import hmac
 import threading
 import ipaddress
-from typing import Optional, Dict, Tuple
+import logging
+import warnings
+from typing import Optional, Dict, Set, Tuple
 from collections import defaultdict
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -66,6 +68,11 @@ class AuthValidator:
         self._valid_keys = set()
         if api_key:
             self._valid_keys.add(api_key)
+        if not self._valid_keys:
+            logging.getLogger(__name__).warning(
+                "AuthValidator: no API keys configured — "
+                "server will accept ALL requests. Set an API key in production."
+            )
     
     def add_key(self, key: str):
         self._valid_keys.add(key)
@@ -93,11 +100,26 @@ class McpHttpHandler(BaseHTTPRequestHandler):
     audit_log: list = []
     
     def _get_client_ip(self) -> str:
-        """Get real client IP (supports X-Forwarded-For)"""
-        forwarded = self.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return self.client_address[0]
+        """Get client IP for rate limiting.
+
+        X-Forwarded-For is ONLY trusted when the connection comes from a
+        configured trusted proxy IP.  Blindly trusting XFF allows any
+        attacker to spoof their IP and bypass rate limiting.
+        """
+        real_ip = self.client_address[0]
+        trusted: Set[str] = getattr(self.server, "trusted_proxy_ips", set())
+        if trusted and real_ip in trusted:
+            forwarded = self.headers.get("X-Forwarded-For", "")
+            if forwarded:
+                # Use the first (leftmost) IP — the actual client
+                candidate = forwarded.split(",")[0].strip()
+                try:
+                    # Validate it's a real IP address before trusting it
+                    ipaddress.ip_address(candidate)
+                    return candidate
+                except ValueError:
+                    pass  # malformed header — fall back to real_ip
+        return real_ip
     
     def _log_audit(self, action: str, ip: str, success: bool, details: str = ""):
         """Tamper-evident audit log entry"""

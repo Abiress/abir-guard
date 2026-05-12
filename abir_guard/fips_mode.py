@@ -172,8 +172,9 @@ class FIPSEncryptor:
             "sha3_256": hashlib.sha3_256,
             "sha3_512": hashlib.sha3_512,
         }
-        return alg_map[algorithm.lower()]().update(data) or \
-               alg_map[algorithm.lower()](data).digest()
+        h = alg_map[algorithm.lower()]()
+        h.update(data)
+        return h.digest()
     
     def _log_operation(self, operation: str, data_size: int) -> None:
         """Log operation for audit trail."""

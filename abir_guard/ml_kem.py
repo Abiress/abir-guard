@@ -26,6 +26,8 @@ Hybrid mode combines both: ML-KEM + X25519 secrets hashed together via SHA-256.
 import secrets
 import hashlib
 import time
+import logging
+import warnings
 from typing import Tuple
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import x25519
@@ -45,7 +47,9 @@ class MLKEM1024:
     ML-KEM-1024 Key Encapsulation (NIST FIPS 203)
     Production-ready with pqcrypto, fallback to liboqs then X25519
     """
-    
+
+    _FIPS_MODE: bool = False  # class-level FIPS enforcement flag
+
     def __init__(self):
         self._backend = None
         self._kem = None
@@ -72,6 +76,13 @@ class MLKEM1024:
         except ImportError:
             self._kem = None
             self._backend = 'x25519'
+            warnings.warn(
+                "MLKEM1024: neither pqcrypto nor liboqs available — "
+                "falling back to classical X25519. "
+                "This is NOT quantum-safe. Install pqcrypto for production.",
+                UserWarning,
+                stacklevel=3,
+            )
             return False
     
     def backend(self) -> str:
@@ -80,6 +91,15 @@ class MLKEM1024:
     def is_available(self) -> bool:
         return self._available
     
+    @classmethod
+    def enable_fips_mode(cls, enabled: bool = True) -> None:
+        """Enable/disable FIPS mode enforcement for all MLKEM1024 instances.
+        When enabled, the X25519 fallback is blocked — only ML-KEM-1024 is permitted."""
+        cls._FIPS_MODE = enabled
+        logging.getLogger(__name__).info(
+            "MLKEM1024 FIPS mode: %s", "enabled" if enabled else "disabled"
+        )
+
     def keygen(self) -> Tuple[bytes, bytes]:
         if self._backend == 'pqcrypto':
             return self._kem['keygen']()
@@ -91,6 +111,12 @@ class MLKEM1024:
     
     def encapsulate(self, public_key: bytes) -> Tuple[bytes, bytes]:
         """Encapsulate with security watchdog"""
+        if self._backend == 'x25519' and MLKEM1024._FIPS_MODE:
+            from .fips_mode import FIPSModeError
+            raise FIPSModeError(
+                "X25519 fallback blocked in FIPS mode. "
+                "Install pqcrypto or liboqs for ML-KEM-1024."
+            )
         start_time = time.perf_counter()
         
         if self._backend == 'pqcrypto':
@@ -195,15 +221,27 @@ class HybridKem:
         ml_ct, ml_ss = self.ml_kem.encapsulate(ml_pk)
         
         try:
-            x_pk = x25519.X25519PublicKey.from_public_bytes(public_key[-32:])
-            ep = secrets.token_bytes(32)
-            x_ss = hashlib.sha256(x_pk.public_bytes_raw() + ep).digest()
+            x_pk_bytes = public_key[-32:]
+            x_recipient_pk = x25519.X25519PublicKey.from_public_bytes(x_pk_bytes)
+            x_eph_sk = x25519.X25519PrivateKey.generate()
+            x_eph_pk = x_eph_sk.public_key()
+            x_raw_shared = x_eph_sk.exchange(x_recipient_pk)
+            # Derive x_ss via HKDF so it's independent of ml_ss
+            x_ss = HKDF(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=b"Abir-Guard-Hybrid-X25519-2026",
+                info=b"hybrid-kem-x25519",
+                backend=default_backend(),
+            ).derive(x_raw_shared)
+            x_ct_part = x_eph_pk.public_bytes_raw()  # ephemeral PK in CT
         except Exception:
             x_ss = secrets.token_bytes(32)
+            x_ct_part = secrets.token_bytes(32)
         
         # Combine both secrets
         combined_ss = hashlib.sha256(ml_ss + x_ss).digest()
-        combined_ct = ml_ct + x_ss
+        combined_ct = ml_ct + x_ct_part
         
         elapsed = time.perf_counter() - start_time
         
@@ -218,11 +256,27 @@ class HybridKem:
     def decapsulate(self, ciphertext: bytes, secret_key: bytes) -> bytes:
         """Hybrid decapsulate"""
         ml_ct = ciphertext[:-32] if len(ciphertext) > 32 else ciphertext
-        x_ct = ciphertext[-32:]
+        x_eph_pk_bytes = ciphertext[-32:]
         
         ml_ss = self.ml_kem.decapsulate(ml_ct, secret_key[:-32] if len(secret_key) > 32 else secret_key)
         
-        return hashlib.sha256(ml_ss + x_ct).digest()
+        # Recover X25519 shared secret using recipient's private key
+        try:
+            x_sk_bytes = secret_key[-32:] if len(secret_key) > 32 else secret_key
+            x_sk = x25519.X25519PrivateKey.from_private_bytes(x_sk_bytes)
+            x_eph_pk = x25519.X25519PublicKey.from_public_bytes(x_eph_pk_bytes)
+            x_raw_shared = x_sk.exchange(x_eph_pk)
+            x_ss = HKDF(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=b"Abir-Guard-Hybrid-X25519-2026",
+                info=b"hybrid-kem-x25519",
+                backend=default_backend(),
+            ).derive(x_raw_shared)
+        except Exception:
+            x_ss = bytes(32)  # zero — will produce wrong combined_ss on bad input
+        
+        return hashlib.sha256(ml_ss + x_ss).digest()
     
     @property
     def is_quantum_safe(self) -> bool:
