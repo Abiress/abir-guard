@@ -34,6 +34,7 @@ Usage:
 import importlib.util
 import secrets
 import time
+import subprocess
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, cast
@@ -218,6 +219,103 @@ class YubiKeyManager:
             )
         except Exception as e:
             raise YubiKeyError(f"Failed to generate key on YubiKey: {e}")
+
+    def get_fido2_info(self) -> Dict[str, object]:
+        """
+        Query CTAP2 capability information from a connected YubiKey.
+
+        Returns a dict with protocol versions and options when available.
+        """
+        if not self.is_available():
+            raise YubiKeyNotFoundError("No YubiKey device found. Connect a YubiKey and try again.")
+
+        if not self._fido2_available:
+            raise YubiKeyNotConfiguredError(
+                "FIDO2 interface not available. Install fido2: pip install fido2"
+            )
+
+        try:
+            from fido2.ctap2 import Ctap2
+            from fido2.hid import CtapHidDevice
+
+            devices = list(CtapHidDevice.list_devices())
+            if not devices:
+                raise YubiKeyNotFoundError("No FIDO2-capable YubiKey found")
+
+            ctap = Ctap2(devices[0])
+            info = ctap.get_info()
+            return {
+                "versions": list(getattr(info, "versions", []) or []),
+                "extensions": list(getattr(info, "extensions", []) or []),
+                "aaguid": str(getattr(info, "aaguid", "")),
+                "options": dict(getattr(info, "options", {}) or {}),
+                "max_msg_size": int(getattr(info, "max_msg_size", 0) or 0),
+            }
+        except ImportError:
+            raise YubiKeyNotConfiguredError(
+                "fido2 not installed. Run: pip install fido2"
+            )
+        except Exception as e:
+            raise YubiKeyError(f"Failed to query CTAP2 info: {e}")
+
+    def list_piv_slots(self) -> Dict[str, bool]:
+        """
+        Return occupancy status for standard PIV slots.
+
+        Keys are slot names: 9a, 9c, 9d, 9e.
+        """
+        if not self.is_available():
+            raise YubiKeyNotFoundError("No YubiKey device found. Connect a YubiKey and try again.")
+
+        if not self._piv_available:
+            raise YubiKeyNotConfiguredError(
+                "PIV interface not available. Install yubikey-manager: pip install yubikey-manager"
+            )
+
+        slot_state: Dict[str, bool] = {"9a": False, "9c": False, "9d": False, "9e": False}
+        try:
+            from ykman.device import connect_to_device
+            from ykman.piv import PivController, SLOT
+
+            device = connect_to_device()
+            piv = PivController(device)
+
+            slot_map = {
+                "9a": getattr(SLOT, "AUTHENTICATION", None),
+                "9c": getattr(SLOT, "SIGNATURE", None),
+                "9d": getattr(SLOT, "KEY_MANAGEMENT", None),
+                "9e": getattr(SLOT, "CARD_AUTH", None),
+            }
+            for slot_name, slot_obj in slot_map.items():
+                if slot_obj is None:
+                    continue
+                try:
+                    piv.get_certificate(slot_obj)
+                    slot_state[slot_name] = True
+                except Exception:
+                    slot_state[slot_name] = False
+
+            device.close()
+            return slot_state
+        except ImportError:
+            raise YubiKeyNotConfiguredError(
+                "yubikey-manager not installed. Run: pip install yubikey-manager"
+            )
+        except Exception:
+            # Fallback to ykman CLI if API surface differs by version.
+            try:
+                out = subprocess.check_output(
+                    ["ykman", "piv", "certificates", "list"],
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    timeout=5,
+                )
+                lowered = out.lower()
+                for slot_name in slot_state.keys():
+                    slot_state[slot_name] = slot_name in lowered
+                return slot_state
+            except Exception as e:
+                raise YubiKeyError(f"Failed to list PIV slots: {e}")
 
     def sign(self, key_id: str, data: bytes) -> bytes:
         """

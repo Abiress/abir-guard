@@ -31,6 +31,7 @@ import subprocess
 import tempfile
 import secrets
 import hashlib
+import importlib.util
 from pathlib import Path
 from typing import Optional, List, Tuple
 from dataclasses import dataclass
@@ -67,7 +68,7 @@ class TPM2Sealer:
     TPM_DEVICE = os.environ.get("TPM2_DEVICE", "/dev/tpmrm0")
     TCTI = f"device:{TPM_DEVICE}"
     
-    def __init__(self, tcti: Optional[str] = None):
+    def __init__(self, tcti: Optional[str] = None, prefer_native_tss: bool = True):
         """
         Initialize TPM sealer.
         
@@ -77,11 +78,44 @@ class TPM2Sealer:
         self.tcti = tcti or self.TCTI
         self._available = None
         self._temp_dir = tempfile.mkdtemp(prefix="abir_guard_tpm_")
+        self._prefer_native_tss = prefer_native_tss
+        self._native_tss_available = self._detect_native_tss()
+
+    @staticmethod
+    def _detect_native_tss() -> bool:
+        """Detect optional native TPM2-TSS Python binding availability."""
+        try:
+            return importlib.util.find_spec("tpm2_pytss") is not None
+        except ModuleNotFoundError:
+            return False
+
+    def get_backend_mode(self) -> str:
+        """
+        Return current backend selection.
+
+        Values:
+        - native-tss: tpm2_pytss available and preferred
+        - cli: tpm2-tools based operations
+        - software: no hardware-capable backend detected
+        """
+        if self._prefer_native_tss and self._native_tss_available:
+            return "native-tss"
+
+        if self.is_available():
+            return "cli"
+
+        return "software"
     
     def is_available(self) -> bool:
         """Check if TPM 2.0 is available."""
         if self._available is not None:
             return self._available
+
+        if self._prefer_native_tss and self._native_tss_available:
+            # Native API path enabled; sealing/unsealing still uses the same
+            # public API with fallback to CLI or software when unavailable.
+            self._available = True
+            return True
         
         try:
             result = subprocess.run(

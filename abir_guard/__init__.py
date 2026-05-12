@@ -170,6 +170,8 @@ __all__ = [
     "Principal",
     "VaultTelemetry",
     "OperationMetric",
+    "Phase4Benchmark",
+    "BenchmarkResult",
     "ModelWeightEncryptor",
     "EncryptedModelBundle",
     "PromptInjectionShield",
@@ -748,6 +750,12 @@ def __getattr__(name):
         return {
             "VaultTelemetry": VaultTelemetry,
             "OperationMetric": OperationMetric,
+        }[name]
+    elif name in {"Phase4Benchmark", "BenchmarkResult"}:
+        from .performance_benchmark import BenchmarkResult, Phase4Benchmark
+        return {
+            "Phase4Benchmark": Phase4Benchmark,
+            "BenchmarkResult": BenchmarkResult,
         }[name]
     elif name in {"ModelWeightEncryptor", "EncryptedModelBundle"}:
         from .model_weight_encryption import EncryptedModelBundle, ModelWeightEncryptor

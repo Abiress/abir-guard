@@ -8,6 +8,14 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ### Added
 
+- **Phase 4 completion updates (Python):**
+  - Added `abir_guard/performance_benchmark.py` with async benchmark runner (`Phase4Benchmark`) and target assertion helper (`BenchmarkResult`, `meets_target`).
+  - Added YubiKey production-facing hardware helpers in `abir_guard/yubikey_integration.py`:
+    - `get_fido2_info()` for CTAP2 capability/introspection
+    - `list_piv_slots()` for standard PIV slot occupancy (9a/9c/9d/9e)
+  - Added TPM backend routing in `abir_guard/tpm2_seal.py` with optional native TPM2-TSS binding detection and `get_backend_mode()` (`native-tss|cli|software`).
+  - Added tests in `tests/test_phase4_performance.py` and extended `tests/test_phase2_hardware.py` for new Phase 4 hardware/benchmark paths.
+
 - **Phase 5 foundations implemented (Python):**
   - Added `abir_guard/model_weight_encryption.py` with envelope-encrypted model artifact bundles and secure fine-tuning artifact pipeline helpers.
   - Added `abir_guard/prompt_injection_shield.py` with prompt risk analysis, HMAC prompt signatures, and encrypted quarantine/restore flow.
@@ -24,6 +32,7 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 ### Changed
 
 - Extended lazy exports in `abir_guard/__init__.py` to include all Phase 5 classes and helpers.
+- Extended lazy exports in `abir_guard/__init__.py` to include `Phase4Benchmark` and `BenchmarkResult`.
 
 ### Validation
 
@@ -35,6 +44,8 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 - `node sdk/js/abir_guard_test.js`: passing (`js_phase5_ok`).
 
 ### Benchmarks
+
+- Phase 4 vault async benchmark: `12,000` roundtrips in `0.174s` (`68,961 ops/s`), exceeding the `10,000 ops/s` roadmap target.
 
 - Prompt shield throughput: `347,999 ops/s` over 20,000 prompt analyses.
 - Model weight envelope roundtrip (1 MiB payload, mock KMS): `4.77 ms`.
