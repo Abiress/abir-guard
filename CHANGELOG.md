@@ -4,7 +4,7 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ---
 
-## [Unreleased]
+## [3.3.0] - 2026-05-12
 
 ### Added
 
