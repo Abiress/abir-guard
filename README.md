@@ -754,6 +754,17 @@ report = enc.attest(b"challenge-nonce")
 - **ML-KEM-1024**: Production-ready. Implemented in Python via `pqcrypto` (PQClean-backed) and Rust via `ml-kem` crate (pure Rust). Full keygen, encapsulation, and decapsulation roundtrip verified.
 - **SHAMIR + Argon2id**: Classical but quantum-safe for their use cases (threshold sharing, key derivation).
 
+### Strict PQ Runtime (Production)
+
+- Install PQ backend: `pip install "abir-guard[pqcrypto]"` (or `pip install pqcrypto`).
+- Enforce fail-fast behavior when PQ backend is missing:
+
+```bash
+export ABIR_GUARD_REQUIRE_PQ=true
+```
+
+- With `ABIR_GUARD_REQUIRE_PQ=true`, `MLKEM1024` raises `SecurityException` instead of falling back to X25519.
+
 ### Mission Alignment 🇮🇳🌍
 
 This project aligns with and supports:

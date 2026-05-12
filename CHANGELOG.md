@@ -45,6 +45,11 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 - Extended lazy exports in `abir_guard/__init__.py` to include all Phase 5 classes and helpers.
 - Extended lazy exports in `abir_guard/__init__.py` to include `Phase4Benchmark` and `BenchmarkResult`.
 - Extended lazy exports in `abir_guard/__init__.py` to include all Phase 6 classes and helpers.
+- Hardened `abir_guard/ml_kem.py` with strict post-quantum runtime enforcement:
+  - Added `require_pq` constructor option for `MLKEM1024`.
+  - Added environment gate `ABIR_GUARD_REQUIRE_PQ=true` to fail fast when `pqcrypto/liboqs` is unavailable.
+  - Kept fallback warning behavior configurable via `warn_on_fallback` for local/dev workflows.
+- Updated `abir_guard/pq_tls.py` to accept and forward strict PQ requirement (`PostQuantumTls(require_pq=...)`).
 
 ### Validation
 
@@ -54,8 +59,9 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 - `pytest tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase5.py -v`: passing (`71/71` tests).
 - `cd sdk/go && go test -v ./...`: passing.
 - `node sdk/js/abir_guard_test.js`: passing (`js_phase5_ok`).
-- `pytest tests/test_pentest.py tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase4_performance.py tests/test_phase5.py tests/test_phase6.py -q`: passing (`165` tests).
+- `pytest tests/test_pentest.py tests/test_abir_guard.py tests/test_phase2_hardware.py tests/test_phase3.py tests/test_phase4_performance.py tests/test_phase5.py tests/test_phase6.py -q`: passing (`167` tests before pqcrypto install, `166 passed + 1 skipped` after pqcrypto install).
 - `pytest tests/test_phase6.py -q`: passing (`8` tests).
+- Added strict-PQ behavior tests in `tests/test_abir_guard.py` covering constructor and env-gated enforcement paths.
 
 ### Benchmarks
 

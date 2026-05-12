@@ -24,8 +24,8 @@ class HybridTlsSecrets:
 class PostQuantumTls:
     """Hybrid key schedule: ML-KEM + X25519 + HKDF, with TLS 1.3 contexts."""
 
-    def __init__(self):
-        self.kem = MLKEM1024()
+    def __init__(self, require_pq: bool | None = None):
+        self.kem = MLKEM1024(require_pq=require_pq)
 
     def build_server_context(self, certfile: str, keyfile: str) -> ssl.SSLContext:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

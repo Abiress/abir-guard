@@ -28,6 +28,7 @@ import hashlib
 import time
 import logging
 import warnings
+import os
 from typing import Tuple
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import x25519
@@ -50,10 +51,27 @@ class MLKEM1024:
 
     _FIPS_MODE: bool = False  # class-level FIPS enforcement flag
 
-    def __init__(self):
+    def __init__(self, require_pq: bool | None = None, warn_on_fallback: bool = True):
+        """
+        Initialize ML-KEM backend selection.
+
+        Args:
+            require_pq: When True, fail fast if pqcrypto/liboqs is unavailable.
+                When None, reads ABIR_GUARD_REQUIRE_PQ from environment.
+            warn_on_fallback: Emit a UserWarning when falling back to X25519.
+        """
         self._backend = None
         self._kem = None
+        env_require = _is_truthy(os.environ.get("ABIR_GUARD_REQUIRE_PQ", ""))
+        self._require_pq = env_require if require_pq is None else require_pq
+        self._warn_on_fallback = warn_on_fallback
         self._available = self._init_backend()
+
+        if self._backend == 'x25519' and self._require_pq:
+            raise SecurityException(
+                "Strict post-quantum mode enabled, but no ML-KEM backend is available. "
+                "Install pqcrypto or liboqs, or disable ABIR_GUARD_REQUIRE_PQ."
+            )
     
     def _init_backend(self) -> bool:
         try:
@@ -76,13 +94,14 @@ class MLKEM1024:
         except ImportError:
             self._kem = None
             self._backend = 'x25519'
-            warnings.warn(
-                "MLKEM1024: neither pqcrypto nor liboqs available — "
-                "falling back to classical X25519. "
-                "This is NOT quantum-safe. Install pqcrypto for production.",
-                UserWarning,
-                stacklevel=3,
-            )
+            if self._warn_on_fallback:
+                warnings.warn(
+                    "MLKEM1024: neither pqcrypto nor liboqs available — "
+                    "falling back to classical X25519. "
+                    "This is NOT quantum-safe. Install pqcrypto for production.",
+                    UserWarning,
+                    stacklevel=3,
+                )
             return False
     
     def backend(self) -> str:
@@ -199,6 +218,7 @@ class HybridKem:
     
     def __init__(self):
         self.ml_kem = MLKEM1024()
+        self.is_quantum_safe = self.ml_kem.backend() in {"pqcrypto", "liboqs"}
     
     def keygen(self) -> Tuple[bytes, bytes]:
         ml_pk, ml_sk = self.ml_kem.keygen()
@@ -277,6 +297,10 @@ class HybridKem:
             x_ss = bytes(32)  # zero — will produce wrong combined_ss on bad input
         
         return hashlib.sha256(ml_ss + x_ss).digest()
+
+
+def _is_truthy(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
     
     @property
     def is_quantum_safe(self) -> bool:
