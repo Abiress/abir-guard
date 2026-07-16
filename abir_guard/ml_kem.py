@@ -221,8 +221,8 @@ class MLKEM1024:
 class HybridKem:
     """Hybrid ML-KEM + X25519"""
     
-    def __init__(self):
-        self.ml_kem = MLKEM1024()
+    def __init__(self, require_pq: bool | None = None):
+        self.ml_kem = MLKEM1024(require_pq=require_pq)
         self.is_quantum_safe = self.ml_kem.backend() in {"pqcrypto", "liboqs"}
     
     def keygen(self) -> Tuple[bytes, bytes]:
@@ -318,7 +318,7 @@ def demo():
     print("Abir-Guard: ML-KEM Key Encapsulation")
     print("=" * 50)
     
-    kem = MLKEM1024()
+    kem = MLKEM1024(require_pq=False)
     print(f"\n[1] ML-KEM-1024 available: {kem.is_available()}")
     
     print("\n[2] Generate keypair...")
@@ -338,7 +338,7 @@ def demo():
     print(f"    Match: {ss == ss2}")
     
     print("\n[5] Hybrid mode...")
-    h = HybridKem()
+    h = HybridKem(require_pq=False)
     hpk, hsk = h.keygen()
     hct, hss = h.encapsulate(hpk)
     hss2 = h.decapsulate(hct, hsk)

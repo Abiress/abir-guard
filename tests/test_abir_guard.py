@@ -129,7 +129,7 @@ class TestMLKEM:
         assert ss == ss2
     
     def test_hybrid(self):
-        hybrid = HybridKem()
+        hybrid = HybridKem(require_pq=False)
         hpk, hsk = hybrid.keygen()
         
         hct, hss = hybrid.encapsulate(hpk)

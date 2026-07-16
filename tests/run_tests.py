@@ -95,7 +95,7 @@ def test_ml_kem():
     print(f"[✓] Decapsulate: SS match = {ss == ss2}")
     
     # Test Hybrid
-    hybrid = HybridKem()
+    hybrid = HybridKem(require_pq=False)
     print(f"[✓] Hybrid quantum-safe: {hybrid.is_quantum_safe}")
     
     return True
