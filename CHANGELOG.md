@@ -12,6 +12,8 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 - **Shamir Secret Sharing for bytes > 250 (HIGH):** Fixed incomplete handling in `src/shamir.rs` by adding an explicit assertion that rejects secret bytes >= 251 (GF(251) field limit). The previous incomplete implementation silently dropped the second share for out-of-range bytes.
 - **Non-CSPRNG in Spectre/Meltdown Delay (MEDIUM):** Replaced `rand::random()` with `getrandom` in `src/differential_privacy.rs:inject_random_delay()` for cryptographic-quality randomness. Removed unused `rand` crate from `Cargo.toml`.
 - **Non-CSPRNG in Python Delay Injection (LOW):** Replaced `random.uniform()` with `os.urandom()` + `struct.unpack()` in `abir_guard/differential_privacy.py:inject_random_delay()`. Removed unused `random` import.
+- **Post-Quantum Now Required by Default (MEDIUM):** `MLKEM1024()` now requires `pqcrypto` by default instead of silently falling back to classical X25519. A quantum-resistant vault should not silently downgrade. Set `require_pq=False` to explicitly allow classical fallback.
+- **Rust Minimum Version Corrected (LOW):** Updated `rust-version` from `1.70` to `1.85` in `Cargo.toml` — the transitive dependency `base64ct 1.8.3` (via `argon2` → `password-hash`) requires edition 2024, which needs Rust 1.85+.
 - **Stale Version References:** Fixed version mismatches across `CITATION.cff` (2.0.0 → 3.2.0), `src/lib.rs` doc comment (v3.0.0), `src/mcp_gateway.rs` (hardcoded "1.0.0" → `env!("CARGO_PKG_VERSION")`), and README/CHANGELOG (3.3.0 → 3.2.0).
 - **Missing Import Guards:** Added try/except import guard in `abir_guard/langchain.py` with helpful install instructions when `pydantic`/`langchain` are missing.
 - **Tests Excluded from Git:** Removed `tests/` from `.gitignore` — the test directory was being excluded from version control.
@@ -270,7 +272,7 @@ b0ee8d5 style: apply rustfmt formatting and reorganize imports across all Rust m
 
 | Version | Python | Rust | Go | Node.js | Status |
 |---------|--------|------|-----|---------|--------|
-| 3.2.0 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Current |
+| 3.2.0 | 3.10+ | 1.85+ | 1.21+ | 18+ | ✅ Current |
 | 3.1.2 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Stable |
 | 3.1.1 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Stable |
 | 3.0.0 | 3.10+ | 1.70+ | 1.21+ | 18+ | ⏳ Legacy |

@@ -9,7 +9,7 @@
   <a href="https://pypi.org/project/abir-guard/"><img src="https://img.shields.io/pypi/v/abir-guard?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
   <a href="https://crates.io/crates/abir_guard"><img src="https://img.shields.io/crates/v/abir_guard?style=for-the-badge&logo=rust&logoColor=white&label=crates.io" alt="crates.io"></a>
   <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Python-3.10%2B-green?style=for-the-badge&logo=python" alt="Python 3.10+"></a>
-  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Rust-1.70%2B-orange?style=for-the-badge&logo=rust" alt="Rust 1.70+"></a>
+  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Rust-1.85%2B-orange?style=for-the-badge&logo=rust" alt="Rust 1.85+"></a>
   <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Go-1.21%2B-cyan?style=for-the-badge&logo=go" alt="Go 1.21+"></a>
   <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Node.js-18%2B-darkgreen?style=for-the-badge&logo=node.js" alt="Node.js 18+"></a>
 </p>
@@ -370,7 +370,7 @@ patch = ops.generate_sidecar_patch(namespace="production", image="abir-guard:3.2
 | CPU | x86_64, ARM64 | Any modern multi-core |
 | RAM | 128 MB | 256 MB+ (Argon2id uses 64 MB during KDF) |
 | Python | 3.10 | 3.11+ |
-| Rust | 1.70 | Latest stable |
+| Rust | 1.85 | Latest stable |
 | Go | 1.21 | Latest stable |
 | Node.js | 18 | 20 LTS |
 
@@ -507,11 +507,14 @@ recovered = kem.decapsulate(ct, sec)
 assert shared_secret == recovered
 ```
 
-Enforce PQ globally via environment variable:
+Enforce PQ globally via environment variable (now the default):
 
 ```bash
-export ABIR_GUARD_REQUIRE_PQ=true
-python my_agent.py  # Fails fast if pqcrypto is missing
+# Explicitly disable PQ requirement if you need classical fallback
+export ABIR_GUARD_REQUIRE_PQ=false
+
+# Or per-instance
+kem = MLKEM1024(require_pq=False)  # allows X25519 fallback with warning
 ```
 
 ---

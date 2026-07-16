@@ -57,13 +57,18 @@ class MLKEM1024:
 
         Args:
             require_pq: When True, fail fast if pqcrypto/liboqs is unavailable.
-                When None, reads ABIR_GUARD_REQUIRE_PQ from environment.
+                When None, defaults to True — a quantum-resistant vault should
+                not silently fall back to classical cryptography.
+                Set to False explicitly to allow X25519 fallback.
             warn_on_fallback: Emit a UserWarning when falling back to X25519.
         """
         self._backend = None
         self._kem = None
         env_require = _is_truthy(os.environ.get("ABIR_GUARD_REQUIRE_PQ", ""))
-        self._require_pq = env_require if require_pq is None else require_pq
+        if require_pq is None:
+            self._require_pq = env_require if env_require else True
+        else:
+            self._require_pq = require_pq
         self._warn_on_fallback = warn_on_fallback
         self._available = self._init_backend()
 
