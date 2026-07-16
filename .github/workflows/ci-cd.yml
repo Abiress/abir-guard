@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   # ─── Python Tests ───
@@ -28,7 +28,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest tests/test_abir_guard.py -v --cov=abir_guard --cov-report=xml --cov-report=term
+        pytest tests/ -v --cov=abir_guard --cov-report=xml --cov-report=term
 
     - name: Upload coverage
       uses: codecov/codecov-action@v4
@@ -63,6 +63,64 @@ jobs:
 
     - name: Build release
       run: cargo build --release
+
+  # ─── JS Tests ───
+  test-js:
+    runs-on: ubuntu-latest
+    name: "JavaScript Tests (Node 18)"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Run JS SDK test
+      run: node sdk/js/abir_guard_test.js
+
+  # ─── Doc Drift Check ───
+  doc-drift:
+    runs-on: ubuntu-latest
+    name: "Doc Drift Check"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check public API is documented in README
+      run: |
+        # Check Rust top-level pub modules are mentioned in README
+        echo "Checking Rust pub modules..."
+        for mod in $(grep -oP '^pub mod \K\w+' src/lib.rs | sort -u); do
+          if ! grep -q "$mod" README.md; then
+            echo "FAIL: Rust module '$mod' is not documented in README"
+            exit 1
+          fi
+        done
+        echo "All Rust pub modules documented."
+
+        # Check Python public modules (files) are mentioned in README
+        echo "Checking Python modules..."
+        for mod in $(ls abir_guard/*.py | xargs -I{} basename {} .py | grep -v __pycache__ | sort -u); do
+          if [ "$mod" = "__init__" ]; then continue; fi
+          if ! grep -q "$mod" README.md; then
+            echo "FAIL: Python module '$mod' is not documented in README"
+            exit 1
+          fi
+        done
+        echo "All Python public classes documented."
+
+        # Check version consistency
+        echo "Checking version consistency..."
+        PY_VER=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+        RS_VER=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+        JS_VER=$(grep -oP "requirePq" sdk/js/abir_guard.js | head -1)
+        if [ "$PY_VER" != "$RS_VER" ]; then
+          echo "FAIL: Version mismatch — Python=$PY_VER, Rust=$RS_VER"
+          exit 1
+        fi
+        echo "Versions consistent: $PY_VER"
 
   # ─── Python Lint ───
   lint-python:
@@ -142,22 +200,22 @@ jobs:
         docker stop ag
 
     - name: Login to Docker Hub
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Push to Docker Hub
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       run: |
         docker push abir-guard:${{ github.sha }}
         docker push abir-guard:latest
 
   # ─── Release ───
   release:
-    needs: [test-python, test-rust, lint-python, security]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test-python, test-rust, test-js, lint-python, security, doc-drift]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     name: "Release"
 
