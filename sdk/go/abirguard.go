@@ -30,7 +30,7 @@ import (
 )
 
 // Version of the Abir-Guard Go SDK.
-const Version = "3.0.0"
+const Version = "3.3.0"
 
 // Ciphertext represents encrypted data with its nonce and authentication tag.
 type Ciphertext struct {

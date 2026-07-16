@@ -2,7 +2,7 @@ const assert = require('assert');
 const { AbirGuard } = require('./abir_guard');
 
 (async () => {
-  const sdk = new AbirGuard();
+  const sdk = new AbirGuard({ pqc: { requirePq: false } });
 
   const key = await sdk.generateKeyPair('agent-js');
   assert.ok(key.publicKey);

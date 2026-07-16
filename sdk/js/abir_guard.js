@@ -46,6 +46,14 @@ class PQCAdapter {
   constructor(options = {}) {
     this.provider = options.provider || null;
     this.mode = options.mode || 'auto';
+    this.requirePq = options.requirePq !== undefined ? options.requirePq : true;
+    if (this.requirePq && !this.provider) {
+      throw new Error(
+        'ML-KEM/ML-DSA provider required in strict mode. ' +
+        'Set requirePq: false to allow simulated (non-quantum-safe) fallback, ' +
+        'or inject a real provider via options.provider.'
+      );
+    }
   }
 
   async generateMlKemKeyPair() {
@@ -140,7 +148,7 @@ class AbirGuard {
   constructor(options = {}) {
     this.keys = new Map();
     this.cache = new Map();
-    this.pqc = new PQCAdapter(options.pqc || {});
+    this.pqc = new PQCAdapter({ requirePq: true, ...options.pqc });
   }
 
   /**

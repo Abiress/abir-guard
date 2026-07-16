@@ -4,6 +4,25 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ---
 
+## [3.3.0] - 2026-07-16
+
+### Breaking Changes
+
+- **`require_pq` default flipped to strict (Python + Rust):** `MLKEM1024()`, `HybridKem()`, and `PostQuantumTls()` now take `require_pq: bool = True` — no more `bool | None = None` overloading where `None` silently meant "default to strict." Code that previously called `MLKEM1024()` without arguments and relied on fallback will now raise `SecurityException` when `pqcrypto` is unavailable. Use `require_pq=False` to explicitly allow classical fallback, or `create_ml_kem()` to read the `ABIR_GUARD_REQUIRE_PQ` environment variable.
+- **JS SDK `PQCAdapter` now requires a provider by default:** `new AbirGuard()` without a provider in `options.pqc` will throw. Pass `{ pqc: { requirePq: false } }` to allow simulated fallback, or inject a real ML-KEM/ML-DSA provider. This fixes a silent mislabeling of `crypto.randomBytes(32)` output as "ML-KEM-1024" — the previous behavior was a security fiction, not weakened crypto.
+
+### Fixed
+
+- **JS SDK fake ML-KEM keypair (HIGH):** `PQCAdapter.generateMlKemKeyPair()` previously returned `crypto.randomBytes(32)` labeled `'ML-KEM-1024(simulated)'` with no warning, no exception path, and no `require_pq` guardrail. Now throws in strict mode (default) when no provider is injected.
+
+### Changed
+
+- Bumped all version numbers to 3.3.0 (pyproject.toml, Cargo.toml, Cargo.lock, __init__.py, CITATION.cff, Go SDK).
+- Fixed README "At a Glance" table to clarify per-SDK PQC support: Go SDK is AES-256-GCM only.
+- Fixed README Rust minimum version from 1.70+ to 1.85+.
+
+---
+
 ## [3.2.0] - 2026-05-12
 
 ### Security Fixes
@@ -274,7 +293,8 @@ b0ee8d5 style: apply rustfmt formatting and reorganize imports across all Rust m
 
 | Version | Python | Rust | Go | Node.js | Status |
 |---------|--------|------|-----|---------|--------|
-| 3.2.0 | 3.10+ | 1.85+ | 1.21+ | 18+ | ✅ Current |
+| 3.3.0 | 3.10+ | 1.85+ | 1.21+ | 18+ | ✅ Current |
+| 3.2.0 | 3.10+ | 1.85+ | 1.21+ | 18+ | ✅ Stable |
 | 3.1.2 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Stable |
 | 3.1.1 | 3.10+ | 1.70+ | 1.21+ | 18+ | ✅ Stable |
 | 3.0.0 | 3.10+ | 1.70+ | 1.21+ | 18+ | ⏳ Legacy |

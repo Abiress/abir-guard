@@ -1,11 +1,11 @@
-# Abir-Guard v3.2.0 — Quantum-Resilient Agentic Security Vault
+# Abir-Guard v3.3.0 — Quantum-Resilient Agentic Security Vault
 
 <p align="center">
   <strong>A production-grade post-quantum cryptography vault for AI agents, enterprise systems, and critical infrastructure — deployed and tested across 6 complete phases.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/version-3.2.0-blue?style=for-the-badge&logo=github" alt="Version 3.2.0"></a>
+  <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/version-3.3.0-blue?style=for-the-badge&logo=github" alt="Version 3.3.0"></a>
   <a href="https://pypi.org/project/abir-guard/"><img src="https://img.shields.io/pypi/v/abir-guard?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI"></a>
   <a href="https://crates.io/crates/abir_guard"><img src="https://img.shields.io/crates/v/abir_guard?style=for-the-badge&logo=rust&logoColor=white&label=crates.io" alt="crates.io"></a>
   <a href="https://github.com/Abiress/abir-guard"><img src="https://img.shields.io/badge/Python-3.10%2B-green?style=for-the-badge&logo=python" alt="Python 3.10+"></a>
@@ -76,8 +76,8 @@
 
 | Category | Details |
 |---|---|
-| **Post-Quantum Cryptography** | ML-KEM-1024 via `pqcrypto` 0.4.0 (PQClean-backed, active — no fallback in production mode), ML-DSA-65 NIST FIPS 204, AES-256-GCM envelope, HKDF-SHA256, Argon2id |
-| **Multi-Language SDKs** | Python 3.10+, Rust 1.70+, Go 1.21+, JavaScript (Node.js 18+ / Browser WebCrypto) |
+| **Post-Quantum Cryptography** | ML-KEM-1024 via `pqcrypto` 0.4.0 (Python), `ml-kem` crate (Rust), WebCrypto provider injection (JS); ML-DSA-65 NIST FIPS 204; AES-256-GCM envelope, HKDF-SHA256, Argon2id. **Go SDK: AES-256-GCM only — no PQC layer.** |
+| **Multi-Language SDKs** | Python 3.10+, Rust 1.85+, Go 1.21+ (AES-256-GCM only), JavaScript (Node.js 18+ / Browser WebCrypto) |
 | **AI-Native Integration** | LangChain tools, CrewAI agents, MCP JSON-RPC server, HTTP MCP gateway |
 | **Hardware Security** | YubiKey FIDO2/PIV, TPM 2.0 seal/unseal, Apple Secure Enclave, Intel SGX, Multi-HSM cluster routing |
 | **Enterprise Features** | AWS/GCP KMS envelope, HashiCorp Vault transit, Kubernetes operator, multi-tenant RBAC, OpenTelemetry facade |
@@ -316,7 +316,7 @@ kms = CloudKmsClient(provider="aws", key_id="arn:aws:kms:us-east-1:123:key/abc")
 ct = kms.envelope_encrypt(b"DATABASE_PASSWORD=super-secret")
 
 ops = K8sOperatorHelper()
-patch = ops.generate_sidecar_patch(namespace="production", image="abir-guard:3.2.0")
+patch = ops.generate_sidecar_patch(namespace="production", image="abir-guard:3.3.0")
 ```
 
 ---
