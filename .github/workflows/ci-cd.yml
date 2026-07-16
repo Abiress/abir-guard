@@ -115,9 +115,18 @@ jobs:
         echo "Checking version consistency..."
         PY_VER=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
         RS_VER=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-        JS_VER=$(grep -oP "requirePq" sdk/js/abir_guard.js | head -1)
+        JS_VER=$(grep -oP "VERSION = '\K[^']+" sdk/js/abir_guard.js)
+        GO_VER=$(grep -oP 'Version = "\K[^"]+' sdk/go/abirguard.go)
         if [ "$PY_VER" != "$RS_VER" ]; then
           echo "FAIL: Version mismatch — Python=$PY_VER, Rust=$RS_VER"
+          exit 1
+        fi
+        if [ "$PY_VER" != "$JS_VER" ]; then
+          echo "FAIL: Version mismatch — Python=$PY_VER, JS=$JS_VER"
+          exit 1
+        fi
+        if [ "$PY_VER" != "$GO_VER" ]; then
+          echo "FAIL: Version mismatch — Python=$PY_VER, Go=$GO_VER"
           exit 1
         fi
         echo "Versions consistent: $PY_VER"

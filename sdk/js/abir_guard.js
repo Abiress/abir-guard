@@ -11,6 +11,7 @@
 
 const crypto = require('crypto');
 
+const VERSION = '3.3.0';
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
 const NONCE_LENGTH = 12;
@@ -368,6 +369,7 @@ class AbirGuardMCP {
 
 // CommonJS exports
 module.exports = {
+  VERSION,
   AbirGuard,
   AbirGuardMCP,
   AbirGuardBrowserExtension,
