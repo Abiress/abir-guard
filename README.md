@@ -58,7 +58,7 @@
 - [Phase 4: Enterprise & Cloud](#phase-4-enterprise--cloud)
 - [Phase 5: AI Security & Compliance](#phase-5-ai-security--compliance)
 - [Phase 6: Distributed & Quantum Ecosystem](#phase-6-distributed--quantum-ecosystem)
-- [Phase 7: Confidential Computing & Advanced Cryptography](#phase-7-confidential-computing--advanced-cryptography)
+- [Phase 7: Advanced Cryptographic & Compliance Primitives](#phase-7-advanced-cryptographic--compliance-primitives-rust)
 - [Docker Deployment](#docker-deployment)
 - [HSM & TPM Integration](#hsm--tpm-integration)
 - [Quantum Readiness](#quantum-readiness)
@@ -891,130 +891,153 @@ signature = cluster.sign("key-id", b"data-to-sign")
 
 ---
 
-## Phase 7: Confidential Computing & Advanced Cryptography
+## Phase 7: Advanced Cryptographic & Compliance Primitives (Rust)
 
-Phase 7 extends the Rust core with production-grade confidential computing, verifiable secret sharing, blockchain key anchoring, interoperability standards, and performance primitives. These modules are implemented in Rust (`src/`) with full test coverage (146 of 176 lib tests).
-
-### Confidential Computing
-
-Multi-TEE support with SGX (DCAP/IAS attestation), ARM TrustZone (OP-TEE command dispatch), and a unified attestation-as-a-service facade.
-
-```rust
-use abir_guard::confidential_computing::sgx::Enclave;
-
-// SGX enclave lifecycle
-let enclave = Enclave::new("production");
-let config = enclave.attestation_config();
-assert!(config.supports_dcap());
-
-// Unified attestation verdict from any TEE provider
-use abir_guard::confidential_computing::attestation_service::{AttestationService, Policy};
-
-let service = AttestationService::new(Policy {
-    allowed_providers: vec!["sgx".into(), "trustzone".into()],
-    min_trust_level: 3,
-    max_evidence_age_secs: 300,
-});
-```
-
-**Multi-Party Computation** — commit/reveal protocol with threshold shares and anti-replay nonce tracking:
-
-```rust
-use abir_guard::confidential_computing::mpc::{MpcSession, Policy};
-
-let session = MpcSession::new(Policy {
-    threshold: 3,
-    total_participants: 5,
-    round_timeout_secs: 30,
-});
-```
+Seven modules, added after Phase 6 and already shipping in `src/lib.rs`, with 146 of the 176 Rust lib tests (83%) exercising them. None of this is exposed in the Python SDK yet — Rust only.
 
 ### Advanced Secret Sharing
 
-Verifiable Shamir shares (VSS commitments), proactive epoch-based refresh, and participant-aware re-sharing with tamper-detectable `RefreshProof` transcripts.
+Goes beyond the Phase 2 Shamir t-of-n: verifiable share commitments, HMAC-bound participant authentication, and proactive epoch-based re-sharing so a compromised old share becomes useless after rotation — without changing the underlying secret.
 
 ```rust
-use abir_guard::advanced_secret_sharing::*;
+use abir_guard::advanced_secret_sharing::{
+    ParticipantShare, authenticate_share, verify_authenticated_share,
+    create_commitments, verify_share, ProactiveRefresher, verify_reshare_plan,
+};
 
-let shares = authenticated_share(&secret, 3, 5, b"context", 0)?;
-// Proactive refresh: rotate shares without changing the secret
-let refresher = ProactiveRefresher::new(threshold, participants);
-let new_shares = refresher.refresh(old_shares, epoch + 1)?;
-```
+let share = ParticipantShare::new("agent-1", vec![/* share bytes */]);
 
-### Blockchain Key Anchoring
+// Bind a share to a participant + epoch + context so a stolen share
+// can't be replayed against a different holder or round.
+let authenticated = authenticate_share(&share, epoch, "vault-reshare", mac_key)?;
+assert!(verify_authenticated_share(&authenticated, "vault-reshare", mac_key));
 
-On-chain key commitments with SHA-256 hashes, owner-gated revocation, and a `SmartContractAnchor` trait for pluggable chain backends.
+// VSS-style commitments let each participant verify their share
+// against the group commitment without seeing anyone else's share.
+let commitments = create_commitments(&all_shares);
+assert!(verify_share(&share.share, participant_index, &commitments));
 
-```rust
-use abir_guard::blockchain::dpki::DecentralizedPki;
-use abir_guard::blockchain::smart_contract::SimulatedContractAnchor;
-
-let pki = DecentralizedPki::new(SimulatedContractAnchor::default());
-pki.register("did:example:123", &public_key, validity_window)?;
-let resolved = pki.resolve("did:example:123")?;
-```
-
-### Interoperability Standards
-
-JWK serialization for ML-DSA-65 and ML-KEM-1024 keys, plus W3C DID Core document management with verification methods and relationship tracking.
-
-```rust
-use abir_guard::interop::jwk::PqcJwk;
-use abir_guard::interop::did::DidDocument;
-
-let jwk = PqcJwk::from_keypair(&ml_dsa_keypair)?;
-let jwk_json = jwk.to_json()?;
-
-let mut doc = DidDocument::new("did:example:abc");
-doc.add_verification_method("key-1", &public_key, &["authentication".into()]);
+// Proactive refresh: rotate shares on an epoch boundary, or reshare
+// across a participant joining/leaving, with a tamper-evident proof.
+let mut refresher = ProactiveRefresher::default();
+let plan = refresher.plan_reshare(/* current participants, new participants, threshold */)?;
+assert!(verify_reshare_plan(&plan));
 ```
 
 ### Audit & Compliance
 
-Append-only SHA-256 hash-chained audit log with tamper detection, plus a compliance engine that checks auth-failure streaks, revocation criticality, and revoke/rotation ratios.
+An append-only, hash-chained audit log (independent of the Phase 1 audit hash chain) plus a policy engine that evaluates the log against configurable rules.
 
 ```rust
-use abir_guard::audit::audit_log::AuditLog;
-use abir_guard::audit::compliance::{ComplianceReport, Policy};
+use abir_guard::audit::audit_log::{AuditLog, Severity};
+use abir_guard::audit::compliance::{ComplianceReport, ComplianceRule};
 
 let mut log = AuditLog::new();
-log.append("admin", "rotate_key", "key-123", "warning")?;
-assert!(log.verify_chain().is_ok());
+log.append(timestamp, "agent-1", "key.rotate", None, Severity::Info)?;
+log.append(timestamp, "agent-1", "key.revoke", Some("compromised".into()), Severity::Critical)?;
+log.verify_chain()?; // Err if any entry was tampered with
 
-let report = ComplianceReport::evaluate(&log, &Policy::default());
-assert!(report.violations.is_empty());
+let rules = vec![
+    ComplianceRule::MaxConsecutiveAuthFailures { max_consecutive: 5 },
+    ComplianceRule::RequireCriticalOnRevocation,
+    ComplianceRule::MaxRevocationToRotationRatio { max_ratio: 0.5 },
+];
+let report = ComplianceReport::evaluate(&log, &rules)?;
 ```
 
-### Performance Primitives
+### Blockchain Integration
 
-Bounded LRU key cache that amortizes Argon2id cost, and batch ML-DSA sign/verify that doesn't abort on partial failure.
+Three layers: on-chain key anchoring, a decentralized-PKI facade, and a smart-contract trait with an in-process simulated backend for testing without a live chain.
+
+```rust
+use abir_guard::blockchain::key_anchor::AnchorRegistry;
+use abir_guard::blockchain::dpki::DecentralizedPki;
+use abir_guard::blockchain::smart_contract::SimulatedContractAnchor;
+
+let mut registry = AnchorRegistry::new();
+let anchor_id = registry.register(&public_key, "agent-1", timestamp)?;
+registry.verify_anchor_by_id(&anchor_id)?; // Err if unknown or revoked
+registry.revoke(&anchor_id, "agent-1")?;   // owner-gated
+
+let mut pki = DecentralizedPki::new();
+pki.register_key("agent-1", &public_key, valid_from, valid_until)?;
+pki.resolve("agent-1", now)?; // checks validity window + live anchor
+
+let chain = SimulatedContractAnchor::new(); // deterministic block height, no network
+```
+
+### Interoperability Standards
+
+JWK-style serialization for PQC keys, and a W3C DID Core document facade — for interop with systems that expect standard key/identity formats rather than Abir-Guard-specific ones.
+
+```rust
+use abir_guard::interop::jwk::PqcJwk;
+use abir_guard::interop::did::{DidDocument, VerificationRelationship};
+
+let jwk = PqcJwk::from_keypair(&public_key, &secret_key, PqcAlgorithm::MlDsa65)?;
+let json = jwk.to_json();
+let parsed = PqcJwk::from_json(&json)?;
+
+let mut did_doc = DidDocument::new("did:abir:agent-1")?;
+let method = did_doc.add_verification_method(
+    "did:abir:agent-1#key-1", "did:abir:agent-1", jwk,
+    &[VerificationRelationship::Authentication],
+)?;
+```
+
+### Performance Optimization
+
+A bounded LRU cache for Argon2id key derivation (the KDF is intentionally expensive — this amortizes repeat cost for the same passphrase+salt), and batch ML-DSA sign/verify that reports per-item results instead of aborting on the first failure.
 
 ```rust
 use abir_guard::performance::key_cache::DerivedKeyCache;
-use abir_guard::performance::batch_ops::{batch_sign, batch_verify};
+use abir_guard::performance::batch_ops::{batch_sign, batch_verify, SignRequest, VerifyRequest};
 
-let mut cache = DerivedKeyCache::new(1024);
-let key = cache.get_or_derive("passphrase", &salt, &params)?;
+let mut cache = DerivedKeyCache::new(128)?; // capacity: 128 derived keys
+let key = cache.get_or_derive(&password, &salt, 32)?; // Argon2id under the hood, cached after first call
+cache.stats(); // hit/miss counters
 
-let results = batch_sign(&keypair, &messages);
-let verification = batch_verify(&public_keys, &messages, &signatures);
-// verification.summary().passed == total
+let results = batch_sign(&sign_requests)?;   // BatchSignResult — check .all_succeeded()
+let results = batch_verify(&verify_requests)?; // BatchVerifyResult — check .all_passed()
 ```
 
-### Quantum Key Distribution
+### Quantum Key Distribution (Rust)
 
-BB84-inspired simulation with pluggable entropy sources, deterministic XorShift64 for reproducibility, configurable channel noise, and QBER-gated session reports.
+A second, independent BB84 simulator from the one already documented in the Python SDK (`qkd_network.py`) — deterministic entropy source for reproducible testing, configurable channel noise, and a QBER acceptance gate.
 
 ```rust
-use abir_guard::qkd::{Bb84Simulator, QuantumChannel, XorShift64};
+use abir_guard::qkd::{Bb84Simulator, QkdParameters, QuantumChannel};
 
-let source = XorShift64::new(0xDEAD_BEEF);
-let channel = QuantumChannel { noise_rate: 0.03, loss_rate: 0.01 };
-let mut sim = Bb84Simulator::new(source, channel, 256);
-let report = sim.run_session();
-// report.qber < 0.11 → session accepted
+let params = QkdParameters { qubit_count: 1024, sample_size: 128, max_qber: 0.11 };
+let channel = QuantumChannel::new(0.03)?; // 3% bit-flip probability
+let sim = Bb84Simulator::new(params, channel)?;
+
+let report = sim.run(&mut entropy_source)?;
+// report.sifted_bits, report.sampled_bits, and whether QBER stayed under max_qber
 ```
+
+### Confidential Computing
+
+The largest single addition (47 of 176 lib tests): SGX enclave lifecycle and DCAP/IAS attestation, ARM TrustZone command dispatch and attestation, multi-party computation (commit/reveal with replay-nonce protection), and a unified attestation service that normalizes SGX + TrustZone results under one routing policy.
+
+```rust
+use abir_guard::confidential_computing::attestation_service::{
+    AttestationService, AttestationRoutingPolicy, TrustLevel,
+};
+
+let policy = AttestationRoutingPolicy {
+    // allowed TEE providers, per-provider freshness SLA, minimum trust level
+    ..Default::default()
+};
+let service = AttestationService::new().with_routing_policy(policy);
+let verdict = service.verify_sgx_quote(&quote)?; // UnifiedAttestationResult
+```
+
+MPC coordination (`confidential_computing::mpc`) supports policy-validated participant registration, commit/reveal rounds, and digest finalization that rejects insufficient shares or replayed nonces — usable independently of the TEE-specific modules above.
+
+---
+
+**Note on maturity:** SGX, TrustZone, and the blockchain smart-contract layer are simulated/abstraction-layer implementations (see `SimulatedContractAnchor`, and the `attestation.rs` DCAP/IAS flows are abstractions over the real attestation protocols, not live hardware paths) — treat this section the way the existing README treats BB84 QKD ("Simulation" status in the Quantum Readiness table), not as a claim of hardware-verified production readiness.
 
 ---
 
@@ -1146,6 +1169,13 @@ kem = MLKEM1024(require_pq=True)  # raises SecurityException if pqcrypto absent
 | Model weight encryption | `abir_guard/model_weight_encryption.py` | ✅ Verified |
 | Federated CRDT sync | `abir_guard/federated_vault.py` | ✅ Verified |
 | BB84 QKD simulation | `abir_guard/qkd_network.py` | ✅ Verified |
+| Verifiable secret sharing (VSS + proactive refresh) | `src/advanced_secret_sharing.rs` | ✅ Verified |
+| Hash-chained audit log + compliance rules | `src/audit/` | ✅ Verified |
+| On-chain key anchoring / DPKI | `src/blockchain/` | ✅ Verified |
+| PQC JWK + DID interop | `src/interop/` | ✅ Verified |
+| SGX / TrustZone attestation (simulated) | `src/confidential_computing/` | ⚠️ Simulated |
+| MPC coordination | `src/confidential_computing/mpc/` | ✅ Verified |
+| Independent BB84 QKD (Rust) | `src/qkd/` | ⚠️ Simulation |
 
 ---
 
@@ -1318,14 +1348,15 @@ All seven phases are complete and available in this repository.
 - [x] W3C DID documents and verifiable credential issue/verify flow
 - [x] Multi-HSM cluster — weighted routing, health checks, regional failover
 
-### Phase 7: Confidential Computing & Advanced Cryptography ✅ Complete
-- [x] Confidential computing — SGX (DCAP/IAS), ARM TrustZone (OP-TEE), MPC commit/reveal, unified attestation-as-a-service
-- [x] Advanced secret sharing — VSS commitments, proactive epoch refresh, participant re-sharing with tamper-detectable `RefreshProof`
-- [x] Blockchain key anchoring — SHA-256 on-chain commitments, owner-gated revocation, `SmartContractAnchor` trait
-- [x] Interoperability — JWK serialization for ML-DSA-65/ML-KEM-1024, W3C DID Core document management
-- [x] Audit & compliance — append-only SHA-256 hash-chained audit log, compliance engine (auth-failure streaks, revocation ratios)
-- [x] Performance — bounded LRU key cache (Argon2id amortization), batch ML-DSA sign/verify (partial-failure-tolerant)
-- [x] Quantum key distribution — BB84 simulation with pluggable entropy, deterministic XorShift64, QBER-gated reports
+### Phase 7: Advanced Cryptographic & Compliance Primitives ✅ Complete (Rust)
+
+- [x] Verifiable secret sharing — VSS commitments, HMAC-bound authenticated shares, proactive epoch-based refresh, join/leave re-sharing with tamper-evident proofs
+- [x] Append-only hash-chained audit log with a configurable compliance rule engine
+- [x] On-chain key anchoring, decentralized-PKI facade, and simulated smart-contract backend
+- [x] JWK-style PQC key serialization and W3C DID Core document facade
+- [x] Bounded LRU cache for Argon2id derivation; batch ML-DSA sign/verify
+- [x] Independent BB84 QKD simulator with deterministic entropy source and QBER gate
+- [x] SGX + TrustZone attestation (simulated), MPC coordination, unified attestation-as-a-service routing
 
 ---
 
