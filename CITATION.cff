@@ -14,8 +14,8 @@ abstract: >
   with AES-256-GCM envelope encryption to protect sensitive agent data from
   Harvest Now, Decrypt Later (HNDL) attacks.
 license: MIT
-version: 2.0.0
-date-released: 2026-05-04
+version: 3.2.0
+date-released: 2026-05-12
 url: "https://github.com/abir-guard/abir-guard"
 repository-code: "https://github.com/abir-guard/abir-guard"
 keywords:

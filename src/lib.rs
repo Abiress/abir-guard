@@ -1,4 +1,4 @@
-//! Abir-Guard: Quantum-Resilient Agentic Vault (v3.0.0)
+//! Abir-Guard: Quantum-Resilient Agentic Vault
 //!
 //! A lightweight, quantum-resistant vault for AI Agent memory.
 //! Uses ML-KEM-1024 (FIPS 203), ML-DSA-65 (FIPS 204), SHAMIR, and Argon2id for post-quantum security.

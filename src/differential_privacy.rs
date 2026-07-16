@@ -99,7 +99,9 @@ impl SpectreMeltdownDefender {
 
     /// Inject random delay to defeat timing analysis
     pub fn inject_random_delay(min_us: u64, max_us: u64) {
-        let delay_us = rand::random::<u64>() % (max_us - min_us + 1) + min_us;
+        let mut buf = [0u8; 8];
+        getrandom::fill(&mut buf).expect("Failed to get random bytes");
+        let delay_us = u64::from_le_bytes(buf) % (max_us - min_us + 1) + min_us;
         std::thread::sleep(std::time::Duration::from_micros(delay_us));
     }
 

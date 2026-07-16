@@ -215,7 +215,7 @@ impl McpServer {
     fn handle_info(&self, _req: &McpRequest) -> Result<serde_json::Value, McpError> {
         Ok(serde_json::json!({
             "name": "Abir-Guard",
-            "version": "1.0.0",
+            "version": env!("CARGO_PKG_VERSION"),
             "mcp_version": "1.0"
         }))
     }

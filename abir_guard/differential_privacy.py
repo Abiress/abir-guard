@@ -20,7 +20,6 @@ import os
 import time
 import math
 import hashlib
-import random
 import struct
 from typing import List, Optional
 
@@ -182,8 +181,12 @@ class SpectreMeltdownDefender:
         """
         Inject random delay to defeat timing analysis.
         Delays are in microseconds.
+        Uses CSPRNG for the random value.
         """
-        delay = random.uniform(min_us, max_us) / 1_000_000
+        raw = os.urandom(8)
+        int_val = struct.unpack('<Q', raw)[0]
+        delay_us = int_val % (max_us - min_us + 1) + min_us
+        delay = delay_us / 1_000_000
         time.sleep(delay)
     
     @staticmethod

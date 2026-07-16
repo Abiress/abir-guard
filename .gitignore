@@ -45,6 +45,5 @@ htmlcov/
 *.pem
 *.key
 
-# Local-only planning and test sources
+# Local-only planning
 V3.2.0_ROADMAP.md
-tests/

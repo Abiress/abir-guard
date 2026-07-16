@@ -3,6 +3,7 @@
 //! Implements a Certificate Revocation List for agent keys.
 //! Allows marking keys as compromised/revoked, preventing their use.
 
+use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,7 +29,7 @@ impl std::fmt::Display for RevocationReason {
 }
 
 /// A single revocation entry
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RevocationEntry {
     pub key_id: String,
     pub reason: String,
@@ -140,12 +141,7 @@ impl RevocationList {
         let entries_json: Vec<String> = self
             .entries
             .iter()
-            .map(|e| {
-                format!(
-                    r#"{{"key_id":"{}","reason":"{}","timestamp":{},"revoked_by":"{}","details":"{}"}}"#,
-                    e.key_id, e.reason, e.timestamp, e.revoked_by, e.details
-                )
-            })
+            .map(|e| serde_json::to_string(e).unwrap_or_default())
             .collect();
         format!(
             r#"{{"version":1,"entries":[{}],"signature":"{}"}}"#,

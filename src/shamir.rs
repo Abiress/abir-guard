@@ -46,10 +46,16 @@ fn gf_inv(a: u8) -> u8 {
 /// # Panics
 /// - If threshold < 2 or shares < threshold
 /// - If shares > 250 (x-coordinate limit in GF(251))
+/// - If any secret byte exceeds 250 (GF(251) field limit)
 pub fn split(secret: &[u8], threshold: usize, num_shares: usize) -> Vec<Share> {
     assert!(threshold >= 2, "Threshold must be >= 2");
     assert!(num_shares >= threshold, "Shares must be >= threshold");
     assert!(num_shares <= 250, "Shares must be <= 250 in GF(251)");
+    assert!(
+        secret.iter().all(|&b| b < PRIME as u8),
+        "Secret bytes must all be < 251 (GF(251) field limit). \
+         For arbitrary binary data, split into ASCII-safe chunks first."
+    );
 
     // Create share structures
     let mut shares: Vec<Share> = (0..num_shares)
@@ -61,16 +67,8 @@ pub fn split(secret: &[u8], threshold: usize, num_shares: usize) -> Vec<Share> {
 
     // For each byte of the secret
     for (byte_idx, &secret_byte) in secret.iter().enumerate() {
-        // Handle bytes > 250 (outside GF(251))
-        // Split into two values that XOR to the original
-        let (b1, b2) = if secret_byte < PRIME as u8 {
-            (secret_byte, 0)
-        } else {
-            let b1 = 1u8;
-            let b2 = secret_byte ^ b1;
-            debug_assert!(b2 < PRIME as u8);
-            (b1, b2)
-        };
+        // All bytes guaranteed < 251 by assertion above
+        let b1 = secret_byte;
 
         // Generate random polynomial coefficients: p(x) = c0 + c1*x + ... + c(t-1)*x^(t-1)
         let mut coeffs = vec![0u8; threshold];
@@ -95,27 +93,6 @@ pub fn split(secret: &[u8], threshold: usize, num_shares: usize) -> Vec<Share> {
             }
 
             share.data[byte_idx] = y as u8;
-        }
-
-        // If we had to split (byte > 250), create a second set of shares
-        if b2 != 0 {
-            let mut coeffs2 = vec![0u8; threshold];
-            coeffs2[0] = b2;
-
-            let rand_bytes2 = get_random_bytes(threshold - 1);
-            for (i, &b) in rand_bytes2.iter().enumerate() {
-                coeffs2[i + 1] = (b % (PRIME as u8 - 1)) + 1;
-            }
-
-            // Store the second polynomial's evaluations interleaved
-            // For simplicity, we store b2 in a separate "high" byte position
-            // Actually, let's just use a simpler approach: store the XOR mask
-            // and XOR it during reconstruction. But that defeats the purpose.
-            //
-            // Better approach: use a larger field. But for practical purposes,
-            // API keys are ASCII (< 128), so this edge case rarely triggers.
-            // For now, we'll clamp: secret_byte = secret_byte % PRIME
-            // This is safe for ASCII data.
         }
     }
 

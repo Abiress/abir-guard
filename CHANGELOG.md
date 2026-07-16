@@ -4,7 +4,17 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ---
 
-## [3.3.0] - 2026-05-12
+## [3.2.0] - 2026-05-12
+
+### Security Fixes
+
+- **JSON Injection in CRL Export (HIGH):** Fixed `src/revocation.rs` to use `serde_json` serialization instead of raw `format!()` string interpolation, preventing JSON injection when key IDs or details contain quote characters.
+- **Shamir Secret Sharing for bytes > 250 (HIGH):** Fixed incomplete handling in `src/shamir.rs` by adding an explicit assertion that rejects secret bytes >= 251 (GF(251) field limit). The previous incomplete implementation silently dropped the second share for out-of-range bytes.
+- **Non-CSPRNG in Spectre/Meltdown Delay (MEDIUM):** Replaced `rand::random()` with `getrandom` in `src/differential_privacy.rs:inject_random_delay()` for cryptographic-quality randomness. Removed unused `rand` crate from `Cargo.toml`.
+- **Non-CSPRNG in Python Delay Injection (LOW):** Replaced `random.uniform()` with `os.urandom()` + `struct.unpack()` in `abir_guard/differential_privacy.py:inject_random_delay()`. Removed unused `random` import.
+- **Stale Version References:** Fixed version mismatches across `CITATION.cff` (2.0.0 → 3.2.0), `src/lib.rs` doc comment (v3.0.0), `src/mcp_gateway.rs` (hardcoded "1.0.0" → `env!("CARGO_PKG_VERSION")`), and README/CHANGELOG (3.3.0 → 3.2.0).
+- **Missing Import Guards:** Added try/except import guard in `abir_guard/langchain.py` with helpful install instructions when `pydantic`/`langchain` are missing.
+- **Tests Excluded from Git:** Removed `tests/` from `.gitignore` — the test directory was being excluded from version control.
 
 ### Added
 
@@ -70,10 +80,6 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 - Prompt shield throughput: `347,999 ops/s` over 20,000 prompt analyses.
 - Model weight envelope roundtrip (1 MiB payload, mock KMS): `4.77 ms`.
 - AI red-team run: score `1.00`, runtime `0.029 ms`.
-
-## [3.2.0] - 2026-05-12
-
-### Added
 
 - **EPIC 1.1 (Confidential Computing - SGX 2.0)**: Completed foundational SGX module set in Rust.
   - Added `src/confidential_computing/sgx/mod.rs` with enclave lifecycle, quote model, PCR policy model, sealing and signing APIs.

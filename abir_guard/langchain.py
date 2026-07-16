@@ -4,8 +4,16 @@ Use Abir-Guard as a LangChain tool
 """
 
 from typing import Type, Optional
-from pydantic import BaseModel, Field
-from langchain.tools import BaseTool
+
+try:
+    from pydantic import BaseModel, Field
+    from langchain.tools import BaseTool
+except ImportError:
+    raise ImportError(
+        "langchain and pydantic are required for LangChain integration. "
+        "Install with: pip install 'abir-guard[langchain]'"
+    )
+
 from . import Vault, Ciphertext
 
 
