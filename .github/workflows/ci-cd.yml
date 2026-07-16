@@ -131,6 +131,41 @@ jobs:
         fi
         echo "Versions consistent: $PY_VER"
 
+        # Check test counts match README
+        echo "Checking test counts..."
+        EXPECTED_PY=167
+        EXPECTED_RS=176
+        EXPECTED_GO=12
+        EXPECTED_JS=1
+
+        PY_COUNT=$(/tmp/test_loop/bin/python -m pytest tests/ -q 2>&1 | grep -oP '^\d+ passed' | grep -oP '^\d+')
+        RS_COUNT=$(cargo test --lib --release 2>&1 | grep -oP 'test result: ok\. \K\d+')
+        GO_COUNT=$(cd sdk/go && go test -v ./... 2>&1 | grep -c "^--- PASS")
+        JS_COUNT=$(node sdk/js/abir_guard_test.js && echo 1 || echo 0)
+
+        echo "Python: $PY_COUNT (expected $EXPECTED_PY)"
+        echo "Rust: $RS_COUNT (expected $EXPECTED_RS)"
+        echo "Go: $GO_COUNT (expected $EXPECTED_GO)"
+        echo "JS: $JS_COUNT (expected $EXPECTED_JS)"
+
+        if [ "$PY_COUNT" != "$EXPECTED_PY" ]; then
+          echo "FAIL: Python test count mismatch — got $PY_COUNT, expected $EXPECTED_PY"
+          exit 1
+        fi
+        if [ "$RS_COUNT" != "$EXPECTED_RS" ]; then
+          echo "FAIL: Rust test count mismatch — got $RS_COUNT, expected $EXPECTED_RS"
+          exit 1
+        fi
+        if [ "$GO_COUNT" != "$EXPECTED_GO" ]; then
+          echo "FAIL: Go test count mismatch — got $GO_COUNT, expected $EXPECTED_GO"
+          exit 1
+        fi
+        if [ "$JS_COUNT" != "$EXPECTED_JS" ]; then
+          echo "FAIL: JS test count mismatch — got $JS_COUNT, expected $EXPECTED_JS"
+          exit 1
+        fi
+        echo "All test counts match."
+
   # ─── Python Lint ───
   lint-python:
     runs-on: ubuntu-latest
