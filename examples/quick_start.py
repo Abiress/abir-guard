@@ -37,7 +37,7 @@ def main():
     # Test ML-KEM
     print("\n[3] Testing ML-KEM...")
     from abir_guard.ml_kem import MLKEM1024, HybridKem
-    kem = MLKEM1024()
+    kem = MLKEM1024(require_pq=False)
     print(f"    ✓ ML-KEM available: {kem.is_available()}")
     pk, sk = kem.keygen()
     ct, ss = kem.encapsulate(pk)

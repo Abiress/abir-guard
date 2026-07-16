@@ -7,7 +7,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from abir_guard import Vault, McpServer, VERSION, Ciphertext
-from abir_guard.ml_kem import MLKEM1024, HybridKem, SecurityException
+from abir_guard.ml_kem import MLKEM1024, HybridKem, SecurityException, create_ml_kem
 from abir_guard.abir_hsm import HSMKeyStore
 
 
@@ -138,7 +138,7 @@ class TestMLKEM:
         assert hss == hss2
 
     def test_require_pq_flag_behavior(self):
-        probe = MLKEM1024(warn_on_fallback=False)
+        probe = MLKEM1024(require_pq=False, warn_on_fallback=False)
 
         if probe.backend() == "x25519":
             with pytest.raises(SecurityException):
@@ -153,9 +153,9 @@ class TestMLKEM:
         probe = MLKEM1024(require_pq=False, warn_on_fallback=False)
         if probe.backend() == "x25519":
             with pytest.raises(SecurityException):
-                MLKEM1024(warn_on_fallback=False)
+                create_ml_kem(warn_on_fallback=False)
         else:
-            kem = MLKEM1024(warn_on_fallback=False)
+            kem = create_ml_kem(warn_on_fallback=False)
             assert kem.backend() in {"pqcrypto", "liboqs"}
 
 

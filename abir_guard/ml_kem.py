@@ -51,24 +51,20 @@ class MLKEM1024:
 
     _FIPS_MODE: bool = False  # class-level FIPS enforcement flag
 
-    def __init__(self, require_pq: bool | None = None, warn_on_fallback: bool = True):
+    def __init__(self, require_pq: bool = True, warn_on_fallback: bool = True):
         """
         Initialize ML-KEM backend selection.
 
         Args:
             require_pq: When True, fail fast if pqcrypto/liboqs is unavailable.
-                When None, defaults to True — a quantum-resistant vault should
-                not silently fall back to classical cryptography.
-                Set to False explicitly to allow X25519 fallback.
+                When False, allow classical X25519 fallback with a warning.
+                Defaults to True — a quantum-resistant vault should not silently
+                downgrade. Use create_ml_kem() to read ABIR_GUARD_REQUIRE_PQ.
             warn_on_fallback: Emit a UserWarning when falling back to X25519.
         """
         self._backend = None
         self._kem = None
-        env_require = _is_truthy(os.environ.get("ABIR_GUARD_REQUIRE_PQ", ""))
-        if require_pq is None:
-            self._require_pq = env_require if env_require else True
-        else:
-            self._require_pq = require_pq
+        self._require_pq = require_pq
         self._warn_on_fallback = warn_on_fallback
         self._available = self._init_backend()
 
@@ -218,10 +214,26 @@ class MLKEM1024:
         return hkdf.derive(peer_public + private_key)
 
 
+def create_ml_kem(**kwargs) -> MLKEM1024:
+    """Create MLKEM1024 with ABIR_GUARD_REQUIRE_PQ env var support.
+
+    This is the single entry point that reads the environment variable.
+    Direct MLKEM1024() construction always requires an explicit boolean.
+    """
+    env_val = os.environ.get("ABIR_GUARD_REQUIRE_PQ", "").strip().lower()
+    if "require_pq" not in kwargs:
+        if env_val in ("true", "1", "yes"):
+            kwargs["require_pq"] = True
+        elif env_val in ("false", "0", "no"):
+            kwargs["require_pq"] = False
+        # else: leave unset, MLKEM1024 default (True) applies
+    return MLKEM1024(**kwargs)
+
+
 class HybridKem:
     """Hybrid ML-KEM + X25519"""
     
-    def __init__(self, require_pq: bool | None = None):
+    def __init__(self, require_pq: bool = True):
         self.ml_kem = MLKEM1024(require_pq=require_pq)
         self.is_quantum_safe = self.ml_kem.backend() in {"pqcrypto", "liboqs"}
     

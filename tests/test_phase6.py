@@ -59,7 +59,7 @@ class TestPostQuantumTls:
         x_sk = x25519.X25519PrivateKey.generate()
         x_pk = x_sk.public_key().public_bytes_raw()
 
-        pq = PostQuantumTls()
+        pq = PostQuantumTls(require_pq=False)
         sec = pq.derive_hybrid_secret(pk, x_pk)
         assert len(sec.shared_secret) == 32
         assert len(sec.tls_exporter_secret) == 32
