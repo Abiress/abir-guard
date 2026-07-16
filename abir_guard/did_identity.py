@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import json
 import time
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
 
@@ -67,7 +67,9 @@ class DidIdentityManager:
             raise DidError("DID not found")
         return self._docs[did]
 
-    def issue_credential(self, issuer: str, subject: str, claims: Dict[str, str], issuer_secret: bytes) -> VerifiableCredential:
+    def issue_credential(
+        self, issuer: str, subject: str, claims: Dict[str, str], issuer_secret: bytes
+    ) -> VerifiableCredential:
         issued_at = int(time.time())
         body = json.dumps(
             {"issuer": issuer, "subject": subject, "claims": claims, "issued_at": issued_at},

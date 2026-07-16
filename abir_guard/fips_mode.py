@@ -24,22 +24,24 @@ Blocked:
 - Keys < 256 bits for symmetric encryption
 """
 
-import os
 import hashlib
-from typing import Optional
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+import os
+
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 
 class FIPSModeError(Exception):
     """Raised when a non-FIPS operation is attempted in FIPS mode."""
+
     pass
 
 
 class FIPSConfig:
     """FIPS 140-3 configuration constants."""
+
     MIN_AES_KEY_BITS = 256
     MIN_SHARED_SECRET_BITS = 256
     REQUIRED_NONCE_BITS = 96
@@ -51,16 +53,15 @@ class FIPSValidator:
     """
     Validates operations against FIPS 140-3 requirements.
     """
-    
+
     @staticmethod
     def validate_aes_key(key: bytes) -> None:
         """Ensure AES key meets minimum length."""
         if len(key) * 8 < FIPSConfig.MIN_AES_KEY_BITS:
             raise FIPSModeError(
-                f"AES key too short: {len(key) * 8} bits "
-                f"(minimum {FIPSConfig.MIN_AES_KEY_BITS})"
+                f"AES key too short: {len(key) * 8} bits (minimum {FIPSConfig.MIN_AES_KEY_BITS})"
             )
-    
+
     @staticmethod
     def validate_nonce(nonce: bytes) -> None:
         """Ensure nonce is the correct length."""
@@ -69,7 +70,7 @@ class FIPSValidator:
                 f"Invalid nonce length: {len(nonce) * 8} bits "
                 f"(required {FIPSConfig.REQUIRED_NONCE_BITS})"
             )
-    
+
     @staticmethod
     def validate_hash_algorithm(algorithm: str) -> None:
         """Ensure hash algorithm is FIPS-approved."""
@@ -78,7 +79,7 @@ class FIPSValidator:
                 f"Non-FIPS hash algorithm: {algorithm}. "
                 f"Approved: {FIPSConfig.APPROVED_HASH_ALGORITHMS}"
             )
-    
+
     @staticmethod
     def validate_shared_secret(secret: bytes) -> None:
         """Ensure shared secret meets minimum entropy."""
@@ -87,7 +88,7 @@ class FIPSValidator:
                 f"Shared secret too short: {len(secret) * 8} bits "
                 f"(minimum {FIPSConfig.MIN_SHARED_SECRET_BITS})"
             )
-    
+
     @staticmethod
     def validate_password(password: str) -> None:
         """Ensure password meets minimum requirements."""
@@ -96,7 +97,7 @@ class FIPSValidator:
                 f"Password too short: {len(password)} chars "
                 f"(minimum {FIPSConfig.MIN_PASSWORD_LENGTH})"
             )
-    
+
     @staticmethod
     def get_secure_random(nbytes: int) -> bytes:
         """Get FIPS-approved random bytes from OS CSPRNG."""
@@ -106,52 +107,51 @@ class FIPSValidator:
 class FIPSEncryptor:
     """
     FIPS 140-3 compliant encryption wrapper.
-    
+
     All operations are validated before execution.
     Non-compliant operations raise FIPSModeError.
     """
-    
+
     def __init__(self):
         self.validator = FIPSValidator()
         self._operation_log = []
-    
+
     def encrypt(self, plaintext: bytes, key: bytes) -> dict:
         """FIPS-compliant encryption."""
         self.validator.validate_aes_key(key)
-        
+
         nonce = FIPSValidator.get_secure_random(12)
         self.validator.validate_nonce(nonce)
-        
+
         cipher = AESGCM(key)
         ct_and_tag = cipher.encrypt(nonce, plaintext, None)
-        
+
         result = {
             "nonce": nonce,
             "ciphertext": ct_and_tag[:-16],
             "auth_tag": ct_and_tag[-16:],
         }
-        
+
         self._log_operation("encrypt", len(plaintext))
         return result
-    
-    def decrypt(self, ciphertext: bytes, auth_tag: bytes,
-                nonce: bytes, key: bytes) -> bytes:
+
+    def decrypt(self, ciphertext: bytes, auth_tag: bytes, nonce: bytes, key: bytes) -> bytes:
         """FIPS-compliant decryption."""
         self.validator.validate_aes_key(key)
         self.validator.validate_nonce(nonce)
-        
+
         ct_full = ciphertext + auth_tag
         cipher = AESGCM(key)
         plaintext = cipher.decrypt(nonce, ct_full, None)
-        
+
         self._log_operation("decrypt", len(plaintext))
         return plaintext
-    
+
     def derive_key(self, secret: bytes, info: bytes = b"") -> bytes:
         """FIPS-compliant key derivation using HKDF-SHA256."""
         self.validator.validate_shared_secret(secret)
         self.validator.validate_hash_algorithm("sha256")
-        
+
         hkdf = HKDF(
             algorithm=hashes.SHA256(),
             length=32,
@@ -160,11 +160,11 @@ class FIPSEncryptor:
             backend=default_backend(),
         )
         return hkdf.derive(secret)
-    
+
     def hash_data(self, data: bytes, algorithm: str = "sha256") -> bytes:
         """FIPS-compliant hashing."""
         self.validator.validate_hash_algorithm(algorithm)
-        
+
         alg_map = {
             "sha256": hashlib.sha256,
             "sha384": hashlib.sha384,
@@ -175,16 +175,19 @@ class FIPSEncryptor:
         h = alg_map[algorithm.lower()]()
         h.update(data)
         return h.digest()
-    
+
     def _log_operation(self, operation: str, data_size: int) -> None:
         """Log operation for audit trail."""
         import time
-        self._operation_log.append({
-            "operation": operation,
-            "data_size": data_size,
-            "timestamp": time.time(),
-            "fips_mode": True,
-        })
-    
+
+        self._operation_log.append(
+            {
+                "operation": operation,
+                "data_size": data_size,
+                "timestamp": time.time(),
+                "fips_mode": True,
+            }
+        )
+
     def get_operation_log(self) -> list:
         return self._operation_log.copy()

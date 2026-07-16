@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 @dataclass
 class KeyMetadata:
     """Metadata tracked for each key."""
+
     key_id: str
     created_at: float = field(default_factory=time.time)
     last_used_at: float = 0.0
@@ -68,7 +69,7 @@ class KeyRotationManager:
     def __init__(
         self,
         default_max_lifetime: float = 0.0,  # seconds, 0 = unlimited
-        default_max_operations: int = 0,    # operations, 0 = unlimited
+        default_max_operations: int = 0,  # operations, 0 = unlimited
     ):
         self._metadata: Dict[str, KeyMetadata] = {}
         self._default_max_lifetime = default_max_lifetime
@@ -84,12 +85,10 @@ class KeyRotationManager:
         meta = KeyMetadata(
             key_id=key_id,
             max_lifetime_seconds=(
-                max_lifetime if max_lifetime is not None
-                else self._default_max_lifetime
+                max_lifetime if max_lifetime is not None else self._default_max_lifetime
             ),
             max_operations=(
-                max_operations if max_operations is not None
-                else self._default_max_operations
+                max_operations if max_operations is not None else self._default_max_operations
             ),
         )
         self._metadata[key_id] = meta
@@ -124,18 +123,20 @@ class KeyRotationManager:
         """List all keys with rotation status."""
         result = []
         for key_id, meta in self._metadata.items():
-            result.append({
-                "key_id": key_id,
-                "age_seconds": round(meta.age_seconds, 1),
-                "total_operations": meta.total_operations,
-                "encrypt_count": meta.encrypt_count,
-                "decrypt_count": meta.decrypt_count,
-                "is_expired": meta.is_expired,
-                "needs_rotation": meta.should_expire(),
-                "rotated_to": meta.rotated_to or "",
-                "max_lifetime": meta.max_lifetime_seconds,
-                "max_operations": meta.max_operations,
-            })
+            result.append(
+                {
+                    "key_id": key_id,
+                    "age_seconds": round(meta.age_seconds, 1),
+                    "total_operations": meta.total_operations,
+                    "encrypt_count": meta.encrypt_count,
+                    "decrypt_count": meta.decrypt_count,
+                    "is_expired": meta.is_expired,
+                    "needs_rotation": meta.should_expire(),
+                    "rotated_to": meta.rotated_to or "",
+                    "max_lifetime": meta.max_lifetime_seconds,
+                    "max_operations": meta.max_operations,
+                }
+            )
         return result
 
     def get_expiring_keys(self, warning_seconds: float = 3600) -> List[str]:

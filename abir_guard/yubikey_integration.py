@@ -33,8 +33,8 @@ Usage:
 
 import importlib.util
 import secrets
-import time
 import subprocess
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, cast
@@ -42,6 +42,7 @@ from typing import Dict, List, Optional, Tuple, cast
 
 class YubiKeyInterface(Enum):
     """Supported YubiKey communication interfaces."""
+
     FIDO2 = "fido2"
     PIV = "piv"
     OATH = "oath"
@@ -51,6 +52,7 @@ class YubiKeyInterface(Enum):
 @dataclass
 class YubiKeyDeviceInfo:
     """Information about a connected YubiKey device."""
+
     serial: int
     version: str
     interfaces: List[YubiKeyInterface]
@@ -62,6 +64,7 @@ class YubiKeyDeviceInfo:
 @dataclass
 class YubiKeyCredential:
     """FIDO2 credential stored on YubiKey."""
+
     credential_id: str
     key_id: str
     algorithm: str
@@ -71,16 +74,19 @@ class YubiKeyCredential:
 
 class YubiKeyError(Exception):
     """Raised when YubiKey operations fail."""
+
     pass
 
 
 class YubiKeyNotFoundError(YubiKeyError):
     """Raised when no YubiKey device is found."""
+
     pass
 
 
 class YubiKeyNotConfiguredError(YubiKeyError):
     """Raised when YubiKey is not configured for the requested operation."""
+
     pass
 
 
@@ -107,13 +113,11 @@ class YubiKeyManager:
         self._key_store: Dict[str, bytes] = {}
 
         # Check module presence without raising when a parent package is missing.
-        self._fido2_available = (
-            self._module_available("fido2")
-            and self._module_available("fido2.hid")
+        self._fido2_available = self._module_available("fido2") and self._module_available(
+            "fido2.hid"
         )
-        self._piv_available = (
-            self._module_available("ykman")
-            and self._module_available("ykman.piv")
+        self._piv_available = self._module_available("ykman") and self._module_available(
+            "ykman.piv"
         )
 
         self._scan_devices()
@@ -132,14 +136,17 @@ class YubiKeyManager:
         if self._fido2_available:
             try:
                 from fido2.hid import CtapHidDevice
+
                 devices = list(CtapHidDevice.list_devices())
                 for dev in devices:
-                    self._devices.append(YubiKeyDeviceInfo(
-                        serial=0,  # FIDO2 doesn't expose serial directly
-                        version="5.x",
-                        interfaces=[YubiKeyInterface.FIDO2],
-                        has_fido2=True
-                    ))
+                    self._devices.append(
+                        YubiKeyDeviceInfo(
+                            serial=0,  # FIDO2 doesn't expose serial directly
+                            version="5.x",
+                            interfaces=[YubiKeyInterface.FIDO2],
+                            has_fido2=True,
+                        )
+                    )
             except Exception:
                 pass
 
@@ -207,7 +214,7 @@ class YubiKeyManager:
                 key_id=key_id,
                 algorithm=algorithm,
                 created_at=time.time(),
-                pin_protected=True
+                pin_protected=True,
             )
 
             device.close()
@@ -252,9 +259,7 @@ class YubiKeyManager:
                 "max_msg_size": int(getattr(info, "max_msg_size", 0) or 0),
             }
         except ImportError:
-            raise YubiKeyNotConfiguredError(
-                "fido2 not installed. Run: pip install fido2"
-            )
+            raise YubiKeyNotConfiguredError("fido2 not installed. Run: pip install fido2")
         except Exception as e:
             raise YubiKeyError(f"Failed to query CTAP2 info: {e}")
 
@@ -275,7 +280,7 @@ class YubiKeyManager:
         slot_state: Dict[str, bool] = {"9a": False, "9c": False, "9d": False, "9e": False}
         try:
             from ykman.device import connect_to_device
-            from ykman.piv import PivController, SLOT
+            from ykman.piv import SLOT, PivController
 
             device = connect_to_device()
             piv = PivController(device)
@@ -393,10 +398,14 @@ class YubiKeyManager:
                 if isinstance(pub_key, ec.EllipticCurvePublicKey):
                     pub_key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
                 elif isinstance(pub_key, rsa.RSAPublicKey):
-                    pub_key.verify(signature, data, padding.PSS(
-                        mgf=padding.MGF1(hashes.SHA256()),
-                        salt_length=padding.PSS.MAX_LENGTH
-                    ), hashes.SHA256())
+                    pub_key.verify(
+                        signature,
+                        data,
+                        padding.PSS(
+                            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+                        ),
+                        hashes.SHA256(),
+                    )
                 return True
             except Exception:
                 return False
@@ -510,10 +519,10 @@ class YubiKeyManager:
     def _generate_software_fallback(self, key_id: str, algorithm: str) -> str:
         """Generate key in software when YubiKey is not available."""
         import warnings
+
         warnings.warn(
-            "YubiKey not available - using software fallback. "
-            "Keys are NOT hardware-backed.",
-            UserWarning
+            "YubiKey not available - using software fallback. Keys are NOT hardware-backed.",
+            UserWarning,
         )
 
         credential_id = secrets.token_hex(32)
@@ -523,7 +532,7 @@ class YubiKeyManager:
             key_id=key_id,
             algorithm=algorithm,
             created_at=time.time(),
-            pin_protected=False
+            pin_protected=False,
         )
 
         if algorithm == "ed25519":

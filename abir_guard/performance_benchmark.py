@@ -10,7 +10,7 @@ import asyncio
 import os
 import time
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable
 
 from . import HybridEncryptor
 from .cloud_kms import CloudKmsEnvelope, LocalMockKmsBackend

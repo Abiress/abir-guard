@@ -19,27 +19,27 @@ The cryptography library handles internal memory zeroization of derived AES keys
 We minimize key lifetime by deriving keys on-demand rather than storing them.
 """
 
-import os
-import json
 import base64
 import hashlib
-import hmac
+import json
+import os
+import re
 import secrets
 import time
-import re
-from typing import Optional, Tuple, Dict, Any, List
-from dataclasses import dataclass, asdict, field
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Tuple
+
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 VERSION = "3.3.0"
 DOMAIN = b"Abir-Guard-Hybrid-2026"
 
 # Input validation constants
 MAX_KEY_ID_LENGTH = 64
-KEY_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
+KEY_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 MAX_DATA_SIZE = 1024 * 1024  # 1MB
 
 
@@ -54,7 +54,7 @@ def validate_key_id(key_id: str) -> str:
     if key_id.startswith("__"):
         raise ValueError("key_id cannot start with __ (reserved for system)")
     # Reject null bytes and path traversal
-    if '\x00' in key_id or '..' in key_id or '/' in key_id or '\\' in key_id:
+    if "\x00" in key_id or ".." in key_id or "/" in key_id or "\\" in key_id:
         raise ValueError("key_id contains invalid characters")
     return key_id
 
@@ -68,6 +68,7 @@ def validate_data_size(data: bytes) -> None:
 @dataclass
 class KeyPair:
     """Hybrid KeyPair: Store shared secret for envelope encryption"""
+
     public_key: str
     secret_key: str
     _shared: bytes = field(repr=False)
@@ -76,6 +77,7 @@ class KeyPair:
 @dataclass
 class Ciphertext:
     """Hybrid Encrypted Message"""
+
     nonce: str
     ciphertext: str
     auth_tag: str = ""  # For JS SDK compatibility
@@ -83,10 +85,10 @@ class Ciphertext:
 
 class AuditLogger:
     """Tamper-evident audit log with hash chaining"""
-    
+
     def __init__(self):
         self._entries: List[dict] = []
-    
+
     def log(self, action: str, key_id: str = "", success: bool = True, details: str = ""):
         entry = {
             "ts": time.time(),
@@ -101,11 +103,9 @@ class AuditLogger:
                 json.dumps(self._entries[-1], sort_keys=True).encode()
             ).hexdigest()
             entry["prev_hash"] = prev_hash
-        entry["hash"] = hashlib.sha256(
-            json.dumps(entry, sort_keys=True).encode()
-        ).hexdigest()
+        entry["hash"] = hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()
         self._entries.append(entry)
-    
+
     def verify_integrity(self) -> bool:
         """Verify hash chain integrity. Returns False if tampering detected."""
         for i, entry in enumerate(self._entries):
@@ -116,21 +116,17 @@ class AuditLogger:
             # Recompute hash
             check = entry.copy()
             check.pop("hash", None)
-            expected = hashlib.sha256(
-                json.dumps(check, sort_keys=True).encode()
-            ).hexdigest()
+            expected = hashlib.sha256(json.dumps(check, sort_keys=True).encode()).hexdigest()
             if entry.get("hash") != expected:
                 return False
             # Verify chain link
             if i > 0:
                 prev = self._entries[i - 1]
-                prev_hash = hashlib.sha256(
-                    json.dumps(prev, sort_keys=True).encode()
-                ).hexdigest()
+                prev_hash = hashlib.sha256(json.dumps(prev, sort_keys=True).encode()).hexdigest()
                 if entry.get("prev_hash") != prev_hash:
                     return False
         return True
-    
+
     def get_entries(self, limit: int = 100) -> List[dict]:
         return self._entries[-limit:]
 
@@ -138,7 +134,7 @@ class AuditLogger:
 # Export classes for LangChain/CrewAI
 __all__ = [
     "Vault",
-    "KeyPair", 
+    "KeyPair",
     "Ciphertext",
     "HybridEncryptor",
     "McpServer",
@@ -216,24 +212,20 @@ class HybridEncryptor:
     Hybrid Encryption: Classical + AES-GCM
     Uses deterministic key derivation for envelope encryption
     """
-    
+
     def __init__(self):
         self.key_size = 32
-    
+
     def generate_keypair(self) -> Tuple[KeyPair, bytes]:
         """Generate keypair with stored shared secret"""
         shared_secret = secrets.token_bytes(32)
         public_key = base64.b64encode(shared_secret).decode()
         secret_key = base64.b64encode(shared_secret).decode()  # Same for demo
-        
-        kp = KeyPair(
-            public_key=public_key,
-            secret_key=secret_key,
-            _shared=shared_secret
-        )
-        
+
+        kp = KeyPair(public_key=public_key, secret_key=secret_key, _shared=shared_secret)
+
         return kp, shared_secret
-    
+
     def encrypt(self, plaintext: bytes, public_key: KeyPair) -> Ciphertext:
         """Encrypt with shared secret from keypair"""
         hkdf = HKDF(
@@ -241,24 +233,24 @@ class HybridEncryptor:
             length=32,
             salt=DOMAIN,
             info=b"aes-key",
-            backend=default_backend()
+            backend=default_backend(),
         )
         aes_key = hkdf.derive(public_key._shared)
-        
+
         nonce = secrets.token_bytes(12)
         cipher = AESGCM(aes_key)
         ciphertext_and_tag = cipher.encrypt(nonce, plaintext, None)
-        
+
         # AES-GCM appends 16-byte auth tag to ciphertext
         auth_tag = ciphertext_and_tag[-16:]
         ciphertext_only = ciphertext_and_tag[:-16]
-        
+
         return Ciphertext(
             nonce=base64.b64encode(nonce).decode(),
             ciphertext=base64.b64encode(ciphertext_only).decode(),
-            auth_tag=base64.b64encode(auth_tag).decode()
+            auth_tag=base64.b64encode(auth_tag).decode(),
         )
-    
+
     def decrypt(self, ciphertext: Ciphertext, secret_key: bytes) -> bytes:
         """Decrypt with stored secret key"""
         hkdf = HKDF(
@@ -266,54 +258,54 @@ class HybridEncryptor:
             length=32,
             salt=DOMAIN,
             info=b"aes-key",
-            backend=default_backend()
+            backend=default_backend(),
         )
         aes_key = hkdf.derive(secret_key)
-        
+
         nonce = base64.b64decode(ciphertext.nonce)
         ct = base64.b64decode(ciphertext.ciphertext)
-        
+
         # Reconstruct ciphertext + auth_tag for AESGCM
         if ciphertext.auth_tag:
             ct = ct + base64.b64decode(ciphertext.auth_tag)
-        
+
         cipher = AESGCM(aes_key)
         plaintext = cipher.decrypt(nonce, ct, None)
-        
+
         return plaintext
 
 
 class EntropyCollector:
     """Noise Collector-style entropy injection"""
-    
+
     def __init__(self):
         self.buffer = []
         self.sample_count = 0
-    
+
     def collect(self) -> bytes:
         """Collect entropy from multiple sources"""
         entropy = []
-        
+
         for _ in range(10):
             t0 = time.perf_counter()
             _ = sum(range(100))
             t1 = time.perf_counter()
             entropy.append(int((t1 - t0) * 1e9))
-        
+
         entropy.append(os.getpid())
         entropy.append(os.getppid())
         entropy.append(int(time.time() * 1e6))
-        
+
         self.buffer.extend(entropy)
         self.sample_count += len(entropy)
-        
+
         h = hashlib.sha256(str(entropy).encode()).digest()
         return h
 
 
 class Vault:
-    """Zero-Copy Memory Vault with audit logging, canary, FIPS mode, key rotation, and attestation"""
-    
+    """Zero-Copy Memory Vault with audit logging and key rotation."""
+
     def __init__(self, fips_mode: bool = False):
         self.encryptor = HybridEncryptor()
         self.keypairs: Dict[str, KeyPair] = {}
@@ -322,26 +314,29 @@ class Vault:
         self.entropy = EntropyCollector()
         self.audit = AuditLogger()
         self._canary_ids: set = set()
-        
+
         # Initialize optional security modules
         self.fips_mode = fips_mode
         self._fips_encryptor = None
         self._rotation_mgr = None
         self._attestation_verifier = None
-        
+
         if fips_mode:
             from .fips_mode import FIPSEncryptor
+
             self._fips_encryptor = FIPSEncryptor()
-        
+
         # Initialize key rotation manager
         from .rotation import KeyRotationManager
+
         self._rotation_mgr = KeyRotationManager()
-        
+
         # Initialize attestation verifier
-        from .attestation import IntegrityProof, AttestationVerifier
+        from .attestation import AttestationVerifier, IntegrityProof
+
         self._attestation_verifier = AttestationVerifier()
         self._integrity_proof = IntegrityProof()
-    
+
     def generate_keypair(self, key_id: str) -> Tuple[str, str]:
         """Generate keypair for agent"""
         key_id = validate_key_id(key_id)
@@ -349,13 +344,13 @@ class Vault:
         self.keypairs[key_id] = kp
         self.secret_keys[key_id] = sk
         self.audit.log("keygen", key_id, True)
-        
+
         # Register key for rotation tracking
         if self._rotation_mgr:
             self._rotation_mgr.register_key(key_id)
-        
+
         return kp.public_key, kp.secret_key
-    
+
     def _rotate_key(self, key_id: str) -> None:
         """Internal method to rotate a key"""
         if key_id in self._canary_ids:
@@ -366,25 +361,28 @@ class Vault:
             del self.secret_keys[key_id]
         self.generate_keypair(key_id)
         self.audit.log("key_rotation", key_id, True)
-    
+
     def enable_fips_mode(self) -> None:
         """Enable FIPS 140-3 compliance mode"""
         from .fips_mode import FIPSEncryptor
+
         self.fips_mode = True
         self._fips_encryptor = FIPSEncryptor()
         # Block X25519 fallback in ML-KEM — only ML-KEM-1024 allowed
         from .ml_kem import MLKEM1024
+
         MLKEM1024.enable_fips_mode(True)
         self.audit.log("fips_enabled", "", True)
-    
+
     def disable_fips_mode(self) -> None:
         """Disable FIPS 140-3 compliance mode"""
         self.fips_mode = False
         self._fips_encryptor = None
         from .ml_kem import MLKEM1024
+
         MLKEM1024.enable_fips_mode(False)
         self.audit.log("fips_disabled", "", True)
-    
+
     def verify_runtime_integrity(self, challenge: str = None) -> bool:
         """Verify runtime integrity using attestation"""
         if not self._attestation_verifier:
@@ -393,7 +391,7 @@ class Vault:
             challenge = secrets.token_hex(16)
         self._integrity_proof.compute(challenge)
         return self._attestation_verifier.verify_proof(self._integrity_proof.to_dict())
-    
+
     def add_canary(self) -> str:
         """
         Plant a canary/honeypot key.
@@ -406,7 +404,7 @@ class Vault:
         self._canary_ids.add(canary_id)
         self.audit.log("canary_plant", canary_id, True)
         return canary_id
-    
+
     def check_canary(self) -> bool:
         """
         Check if any canary key has been accessed.
@@ -414,27 +412,27 @@ class Vault:
         """
         for canary_id in list(self._canary_ids):
             if canary_id not in self.keypairs:
-                self.audit.log("canary_breach", canary_id, False,
-                             "Canary key removed — possible breach")
+                self.audit.log(
+                    "canary_breach", canary_id, False, "Canary key removed — possible breach"
+                )
                 return True
         return False
-    
+
     def store(self, key_id: str, plaintext: bytes) -> Ciphertext:
         """Encrypt and store data"""
         key_id = validate_key_id(key_id)
         validate_data_size(plaintext)
-        
+
         if key_id in self._canary_ids:
-            self.audit.log("canary_access", key_id, False,
-                         "Attempted to store data in canary key")
-        
+            self.audit.log("canary_access", key_id, False, "Attempted to store data in canary key")
+
         if key_id not in self.keypairs:
             self.generate_keypair(key_id)
-        
+
         # Check key rotation before encrypt
         if self._rotation_mgr and self._rotation_mgr.needs_rotation(key_id):
             self._rotate_key(key_id)
-        
+
         # Use FIPS mode if enabled
         if self.fips_mode and self._fips_encryptor:
             key_bytes = self.secret_keys[key_id]
@@ -445,39 +443,39 @@ class Vault:
                 ciphertext=base64.b64encode(fips_result["ciphertext"]).decode(),
                 auth_tag=base64.b64encode(fips_result["auth_tag"]).decode(),
             )
-        
+
         ct = self.encryptor.encrypt(plaintext, self.keypairs[key_id])
         self.audit.log("encrypt", key_id, True)
-        
+
         # Track key usage for rotation
         if self._rotation_mgr:
             self._rotation_mgr.record_usage(key_id, "encrypt")
-        
+
         return ct
-    
+
     def retrieve(self, key_id: str, ciphertext: Ciphertext) -> bytes:
         """Decrypt and retrieve data"""
         key_id = validate_key_id(key_id)
-        
+
         if key_id not in self.secret_keys:
             self.audit.log("decrypt", key_id, False, "Key not found")
             raise ValueError(f"No keypair for {key_id}")
-        
+
         if key_id in self._canary_ids:
-            self.audit.log("canary_breach", key_id, False,
-                         "Canary key accessed — breach detected!")
-        
+            self.audit.log("canary_breach", key_id, False, "Canary key accessed — breach detected!")
+
         # Verify attestation before decrypt (if available)
         if self._attestation_verifier:
             try:
                 proof_dict = self._integrity_proof.to_dict()
                 if not self._attestation_verifier.verify_proof(proof_dict):
-                    self.audit.log("attestation_failed", key_id, False,
-                                  "Runtime integrity check failed")
+                    self.audit.log(
+                        "attestation_failed", key_id, False, "Runtime integrity check failed"
+                    )
                     raise ValueError("Runtime integrity check failed — possible tampering detected")
             except Exception as e:
                 self.audit.log("attestation_error", key_id, False, str(e))
-        
+
         # Use FIPS mode if enabled
         if self.fips_mode and self._fips_encryptor:
             key_bytes = self.secret_keys[key_id]
@@ -487,20 +485,20 @@ class Vault:
             plaintext = self._fips_encryptor.decrypt(ct_bytes, tag_bytes, nonce_bytes, key_bytes)
             self.audit.log("decrypt", key_id, True)
             return plaintext
-        
+
         plaintext = self.encryptor.decrypt(ciphertext, self.secret_keys[key_id])
         self.audit.log("decrypt", key_id, True)
-        
+
         # Track key usage for rotation
         if self._rotation_mgr:
             self._rotation_mgr.record_usage(key_id, "decrypt")
-        
+
         return plaintext
-    
+
     def list_keypairs(self) -> list:
         """List all keypair IDs (excludes canary keys)"""
         return [k for k in self.keypairs if not k.startswith("__")]
-    
+
     def remove_keypair(self, key_id: str):
         """Delete keypair"""
         key_id = validate_key_id(key_id)
@@ -511,12 +509,12 @@ class Vault:
         if key_id in self.cache:
             del self.cache[key_id]
         self.audit.log("delete_key", key_id, True)
-    
+
     def clear_cache(self):
         """Clear memory cache"""
         self.cache.clear()
         self.audit.log("clear_cache", "", True)
-    
+
     def verify_audit_integrity(self) -> bool:
         """Verify audit log hasn't been tampered with"""
         return self.audit.verify_integrity()
@@ -524,92 +522,88 @@ class Vault:
 
 class McpServer:
     """MCP Protocol Server"""
-    
+
     def __init__(self, fips_mode: bool = False):
         self.vault = Vault(fips_mode=fips_mode)
-    
+
     def handle(self, request: dict) -> dict:
         """Handle MCP request"""
         method = request.get("method", "")
         params = request.get("params", {})
-        
+
         try:
             result = self._dispatch(method, params)
             self.vault.audit.log("mcp", method, True)
-            return {
-                "jsonrpc": "2.0",
-                "id": request.get("id"),
-                "result": result
-            }
+            return {"jsonrpc": "2.0", "id": request.get("id"), "result": result}
         except Exception as e:
             self.vault.audit.log("mcp", method, False, str(e))
             return {
                 "jsonrpc": "2.0",
                 "id": request.get("id"),
-                "error": {"code": -32603, "message": str(e)}
+                "error": {"code": -32603, "message": str(e)},
             }
-    
+
     def _dispatch(self, method: str, params: dict) -> Any:
         """Dispatch to handler"""
         if method == "generate_key":
             key_id = validate_key_id(params["key_id"])
             self.vault.generate_keypair(key_id)
             return {"key_id": key_id, "generated": True}
-        
+
         elif method == "encrypt":
             key_id = validate_key_id(params["key_id"])
             data = params["data"].encode()
             validate_data_size(data)
             ct = self.vault.store(key_id, data)
             return asdict(ct)
-        
+
         elif method == "decrypt":
             key_id = validate_key_id(params["key_id"])
             ct = Ciphertext(**params["ciphertext"])
             data = self.vault.retrieve(key_id, ct)
             return {"plaintext": data.decode()}
-        
+
         elif method == "list_keys":
             return {"keys": self.vault.list_keypairs()}
-        
+
         elif method == "delete_key":
             key_id = validate_key_id(params["key_id"])
             self.vault.remove_keypair(key_id)
             return {"deleted": True, "key_id": key_id}
-        
+
         elif method == "clear_cache":
             self.vault.clear_cache()
             return {"cleared": True}
-        
+
         elif method == "add_canary":
             canary_id = self.vault.add_canary()
             return {"canary_id": canary_id}
-        
+
         elif method == "check_canary":
             breached = self.vault.check_canary()
             return {"breach_detected": breached}
-        
+
         elif method == "audit_log":
             limit = params.get("limit", 100)
             return {"entries": self.vault.audit.get_entries(limit)}
-        
+
         elif method == "info":
             return {
                 "name": "Abir-Guard",
                 "version": VERSION,
                 "mcp_version": "1.0",
-                "fips_mode": self.vault.fips_mode
+                "fips_mode": self.vault.fips_mode,
             }
-        
+
         elif method == "rotate_key":
             key_id = validate_key_id(params["key_id"])
             self.vault._rotate_key(key_id)
             return {"key_id": key_id, "rotated": True}
-        
+
         elif method == "verify_integrity":
             result = self.vault.verify_runtime_integrity()
             return {"integrity_ok": result}
-        
+
         elif method == "fips_mode":
             enable = params.get("enable", False)
             if enable:
@@ -617,7 +611,7 @@ class McpServer:
             else:
                 self.vault.disable_fips_mode()
             return {"fips_mode": self.vault.fips_mode}
-        
+
         else:
             raise ValueError(f"Unknown method: {method}")
 
@@ -625,14 +619,14 @@ class McpServer:
 def main():
     """CLI entry point"""
     import sys
-    
+
     if len(sys.argv) < 2:
         print("Usage: abir-guard [command]")
         print("Commands: demo, info")
         return
-    
+
     command = sys.argv[1]
-    
+
     if command == "demo":
         demo()
     elif command == "info":
@@ -648,56 +642,56 @@ def demo():
     print("=" * 50)
     print("Abir-Guard: PQC Agent Memory Vault")
     print("=" * 50)
-    
+
     vault = Vault()
-    
+
     # Generate keypair
     pub, sec = vault.generate_keypair("agent-1")
-    print(f"\n[+] Generated keypair: agent-1")
-    
+    print("\n[+] Generated keypair: agent-1")
+
     # Encrypt
     secret_data = b"Financial API keys: sk-abc123xyz..."
     ct = vault.store("agent-1", secret_data)
     print(f"[+] Encrypted: {len(ct.ciphertext)} bytes")
-    
+
     # Decrypt
     plaintext = vault.retrieve("agent-1", ct)
     print(f"[+] Decrypted: {plaintext.decode()}")
-    
+
     # Verify round trip
     assert plaintext == secret_data
     print("[+] Round-trip verified!")
-    
+
     # Canary test
     print("\n[+] Canary Key Test")
     canary_id = vault.add_canary()
     print(f"    Planted canary: {canary_id[:20]}...")
     print(f"    Breach detected: {vault.check_canary()}")
-    
+
     # Audit log
     print("\n[+] Audit Log")
     entries = vault.audit.get_entries()
     print(f"    Total entries: {len(entries)}")
     print(f"    Integrity: {vault.verify_audit_integrity()}")
-    
+
     # MCP server
     print("\n[+] MCP Server Test")
     server = McpServer()
-    
+
     req = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "encrypt",
-        "params": {"key_id": "test-agent", "data": "Sensitive memory"}
+        "params": {"key_id": "test-agent", "data": "Sensitive memory"},
     }
     resp = server.handle(req)
     print(f"    MCP Response: {json.dumps(resp, indent=2)}")
-    
+
     # List keys
     req = {"jsonrpc": "2.0", "id": 2, "method": "list_keys", "params": {}}
     resp = server.handle(req)
     print(f"    Keys: {resp['result']['keys']}")
-    
+
     print("\n" + "=" * 50)
     print("Demo Complete!")
     print("=" * 50)
@@ -706,19 +700,24 @@ def demo():
 if __name__ == "__main__":
     main()
 
+
 # Lazy import to avoid circular dependencies
 def __getattr__(name):
     if name == "McpHttpServer":
         from .mcp_http import McpHttpServer
+
         return McpHttpServer
     elif name == "YubiKeyManager":
         from .yubikey_integration import YubiKeyManager
+
         return YubiKeyManager
     elif name == "TPM2Sealer":
         from .tpm2_seal import TPM2Sealer
+
         return TPM2Sealer
     elif name == "HardwareEnclave":
         from .hardware_enclave import HardwareEnclave
+
         return HardwareEnclave
     elif name in {
         "CloudKmsEnvelope",
@@ -734,6 +733,7 @@ def __getattr__(name):
             GcpKmsBackend,
             LocalMockKmsBackend,
         )
+
         return {
             "CloudKmsEnvelope": CloudKmsEnvelope,
             "AwsKmsBackend": AwsKmsBackend,
@@ -743,12 +743,14 @@ def __getattr__(name):
         }[name]
     elif name in {"VaultTransitClient", "VaultTransitConfig"}:
         from .hashicorp_vault import VaultTransitClient, VaultTransitConfig
+
         return {
             "VaultTransitClient": VaultTransitClient,
             "VaultTransitConfig": VaultTransitConfig,
         }[name]
     elif name in {"KubernetesOperator", "SidecarConfig", "RotationPolicy"}:
         from .kubernetes_operator import KubernetesOperator, RotationPolicy, SidecarConfig
+
         return {
             "KubernetesOperator": KubernetesOperator,
             "SidecarConfig": SidecarConfig,
@@ -756,6 +758,7 @@ def __getattr__(name):
         }[name]
     elif name in {"RbacManager", "RbacError", "Permission", "Role", "Principal"}:
         from .rbac import Permission, Principal, RbacError, RbacManager, Role
+
         return {
             "RbacManager": RbacManager,
             "RbacError": RbacError,
@@ -765,24 +768,32 @@ def __getattr__(name):
         }[name]
     elif name in {"VaultTelemetry", "OperationMetric"}:
         from .telemetry import OperationMetric, VaultTelemetry
+
         return {
             "VaultTelemetry": VaultTelemetry,
             "OperationMetric": OperationMetric,
         }[name]
     elif name in {"Phase4Benchmark", "BenchmarkResult"}:
         from .performance_benchmark import BenchmarkResult, Phase4Benchmark
+
         return {
             "Phase4Benchmark": Phase4Benchmark,
             "BenchmarkResult": BenchmarkResult,
         }[name]
     elif name in {"ModelWeightEncryptor", "EncryptedModelBundle"}:
         from .model_weight_encryption import EncryptedModelBundle, ModelWeightEncryptor
+
         return {
             "ModelWeightEncryptor": ModelWeightEncryptor,
             "EncryptedModelBundle": EncryptedModelBundle,
         }[name]
     elif name in {"PromptInjectionShield", "PromptShieldDecision", "EncryptedPrompt"}:
-        from .prompt_injection_shield import EncryptedPrompt, PromptInjectionShield, PromptShieldDecision
+        from .prompt_injection_shield import (
+            EncryptedPrompt,
+            PromptInjectionShield,
+            PromptShieldDecision,
+        )
+
         return {
             "PromptInjectionShield": PromptInjectionShield,
             "PromptShieldDecision": PromptShieldDecision,
@@ -790,12 +801,14 @@ def __getattr__(name):
         }[name]
     elif name in {"ComplianceManager", "ComplianceRecord"}:
         from .compliance import ComplianceManager, ComplianceRecord
+
         return {
             "ComplianceManager": ComplianceManager,
             "ComplianceRecord": ComplianceRecord,
         }[name]
     elif name in {"MultiAgentKeySharing", "AgentShare", "QuorumPolicy"}:
         from .multi_agent_key_sharing import AgentShare, MultiAgentKeySharing, QuorumPolicy
+
         return {
             "MultiAgentKeySharing": MultiAgentKeySharing,
             "AgentShare": AgentShare,
@@ -803,12 +816,14 @@ def __getattr__(name):
         }[name]
     elif name in {"SecureEnclaveLLM", "AttestationEvidence"}:
         from .secure_enclave_llm import AttestationEvidence, SecureEnclaveLLM
+
         return {
             "SecureEnclaveLLM": SecureEnclaveLLM,
             "AttestationEvidence": AttestationEvidence,
         }[name]
     elif name in {"ZkComplianceProver", "ZkComplianceVerifier", "ComplianceProof"}:
         from .zk_compliance import ComplianceProof, ZkComplianceProver, ZkComplianceVerifier
+
         return {
             "ZkComplianceProver": ZkComplianceProver,
             "ZkComplianceVerifier": ZkComplianceVerifier,
@@ -816,6 +831,7 @@ def __getattr__(name):
         }[name]
     elif name in {"AIRedTeamRunner", "RedTeamScenario", "RedTeamResult"}:
         from .ai_red_team import AIRedTeamRunner, RedTeamResult, RedTeamScenario
+
         return {
             "AIRedTeamRunner": AIRedTeamRunner,
             "RedTeamScenario": RedTeamScenario,
@@ -823,37 +839,53 @@ def __getattr__(name):
         }[name]
     elif name in {"FederatedVaultNode", "CrdtRecord"}:
         from .federated_vault import CrdtRecord, FederatedVaultNode
+
         return {
             "FederatedVaultNode": FederatedVaultNode,
             "CrdtRecord": CrdtRecord,
         }[name]
     elif name in {"Bb84Network", "QkdSession"}:
         from .qkd_network import Bb84Network, QkdSession
+
         return {
             "Bb84Network": Bb84Network,
             "QkdSession": QkdSession,
         }[name]
     elif name in {"PostQuantumTls", "HybridTlsSecrets"}:
         from .pq_tls import HybridTlsSecrets, PostQuantumTls
+
         return {
             "PostQuantumTls": PostQuantumTls,
             "HybridTlsSecrets": HybridTlsSecrets,
         }[name]
     elif name in {"WasmEdgeBuilder", "WasmTarget"}:
         from .wasm_edge import WasmEdgeBuilder, WasmTarget
+
         return {
             "WasmEdgeBuilder": WasmEdgeBuilder,
             "WasmTarget": WasmTarget,
         }[name]
     elif name in {"AppleSecureEnclaveNative", "IntelSgxNative", "EnclaveReport"}:
         from .native_enclave import AppleSecureEnclaveNative, EnclaveReport, IntelSgxNative
+
         return {
             "AppleSecureEnclaveNative": AppleSecureEnclaveNative,
             "IntelSgxNative": IntelSgxNative,
             "EnclaveReport": EnclaveReport,
         }[name]
-    elif name in {"DidIdentityManager", "DidDocument", "VerificationMethod", "VerifiableCredential"}:
-        from .did_identity import DidDocument, DidIdentityManager, VerifiableCredential, VerificationMethod
+    elif name in {
+        "DidIdentityManager",
+        "DidDocument",
+        "VerificationMethod",
+        "VerifiableCredential",
+    }:
+        from .did_identity import (
+            DidDocument,
+            DidIdentityManager,
+            VerifiableCredential,
+            VerificationMethod,
+        )
+
         return {
             "DidIdentityManager": DidIdentityManager,
             "DidDocument": DidDocument,
@@ -862,6 +894,7 @@ def __getattr__(name):
         }[name]
     elif name in {"HsmCluster", "HsmClusterError", "ClusterProvider"}:
         from .hsm_cluster import ClusterProvider, HsmCluster, HsmClusterError
+
         return {
             "HsmCluster": HsmCluster,
             "HsmClusterError": HsmClusterError,

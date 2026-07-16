@@ -93,8 +93,8 @@ def decrypt_blob(blob: bytes, key: bytes) -> bytes:
     nonce = blob[:NONCE_SIZE]
     # Last 16 bytes = GCM tag, last 32 bytes before that = HMAC
     mac = blob[-TAG_SIZE:]
-    gcm_tag = blob[-(TAG_SIZE + 16):-TAG_SIZE]
-    ciphertext = blob[NONCE_SIZE:-(TAG_SIZE + 16)]
+    gcm_tag = blob[-(TAG_SIZE + 16) : -TAG_SIZE]
+    ciphertext = blob[NONCE_SIZE : -(TAG_SIZE + 16)]
 
     # Verify HMAC first (constant-time comparison)
     h = hmac.HMAC(key, hashes.SHA256())
@@ -136,13 +136,9 @@ class EncryptedVault:
         """Get or derive master encryption key"""
         if self._master_key is None:
             if self._salt:
-                self._master_key, _ = derive_master_key(
-                    self.passphrase, self._salt
-                )
+                self._master_key, _ = derive_master_key(self.passphrase, self._salt)
             else:
-                self._master_key, self._salt = derive_master_key(
-                    self.passphrase
-                )
+                self._master_key, self._salt = derive_master_key(self.passphrase)
         return self._master_key
 
     def store_key(self, key_id: str, public_key: str, secret_key: str) -> None:
@@ -261,9 +257,7 @@ class EncryptedVault:
             if AUDIT_FILE.exists():
                 prev = AUDIT_FILE.read_text().strip().split("\n")[-1]
                 entry["prev_hash"] = hashlib.sha256(prev.encode()).hexdigest()
-            entry["hash"] = hashlib.sha256(
-                json.dumps(entry, sort_keys=True).encode()
-            ).hexdigest()
+            entry["hash"] = hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()
 
             with open(AUDIT_FILE, "a") as f:
                 f.write(json.dumps(entry) + "\n")

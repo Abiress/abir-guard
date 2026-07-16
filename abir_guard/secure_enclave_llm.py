@@ -30,7 +30,9 @@ class SecureEnclaveLLM:
         if provider not in self._providers:
             raise ValueError(f"unsupported provider: {provider}")
         root = self._providers[provider].encode("utf-8")
-        measurement = hashlib.sha256(root + model_hash.encode("utf-8") + nonce.encode("utf-8")).hexdigest()
+        measurement = hashlib.sha256(
+            root + model_hash.encode("utf-8") + nonce.encode("utf-8")
+        ).hexdigest()
         return AttestationEvidence(
             provider=provider,
             measurement=measurement,

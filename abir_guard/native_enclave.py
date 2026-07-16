@@ -53,7 +53,11 @@ class IntelSgxNative:
     """Native SGX availability and quote-path checks."""
 
     def is_available(self) -> bool:
-        return os.path.exists("/dev/sgx_enclave") or os.path.exists("/dev/isgx") or os.path.exists("/dev/sgx")
+        return (
+            os.path.exists("/dev/sgx_enclave")
+            or os.path.exists("/dev/isgx")
+            or os.path.exists("/dev/sgx")
+        )
 
     def attest(self, nonce: bytes) -> EnclaveReport:
         if not nonce:

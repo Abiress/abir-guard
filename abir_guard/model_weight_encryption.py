@@ -42,7 +42,9 @@ class ModelWeightEncryptor:
     ):
         self._envelope = CloudKmsEnvelope(provider=provider, key_id=key_id, backend=backend)
 
-    def encrypt_bytes(self, data: bytes, metadata: Optional[Dict[str, str]] = None) -> EncryptedModelBundle:
+    def encrypt_bytes(
+        self, data: bytes, metadata: Optional[Dict[str, str]] = None
+    ) -> EncryptedModelBundle:
         artifact = self._envelope.encrypt(data)
         return EncryptedModelBundle(artifact=artifact, metadata=metadata or {})
 

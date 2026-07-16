@@ -11,7 +11,6 @@ from typing import Iterable, List, Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-
 DEFAULT_PATTERNS = [
     r"ignore\s+previous\s+instructions",
     r"reveal\s+system\s+prompt",
@@ -51,7 +50,9 @@ class PromptInjectionShield:
         risk = min(1.0, len(matched) * 0.4)
         allowed = risk < self.block_threshold
         reason = "allowed" if allowed else "blocked: injection patterns detected"
-        return PromptShieldDecision(allowed=allowed, risk_score=risk, reason=reason, matched_rules=matched)
+        return PromptShieldDecision(
+            allowed=allowed, risk_score=risk, reason=reason, matched_rules=matched
+        )
 
     def sign_prompt(self, prompt: str, signing_key: bytes) -> str:
         digest = hmac.new(signing_key, prompt.encode("utf-8"), hashlib.sha256).digest()

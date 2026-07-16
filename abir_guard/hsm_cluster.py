@@ -14,11 +14,9 @@ class HsmClusterError(Exception):
 class HsmProvider(Protocol):
     region: str
 
-    def is_healthy(self) -> bool:
-        ...
+    def is_healthy(self) -> bool: ...
 
-    def sign(self, key_id: str, data: bytes) -> bytes:
-        ...
+    def sign(self, key_id: str, data: bytes) -> bytes: ...
 
 
 @dataclass
@@ -62,7 +60,7 @@ class HsmCluster:
         if not healthy:
             raise HsmClusterError("no healthy HSM providers available")
 
-        index_map = {id(p): i for i, p in enumerate(self._providers)}
+        {id(p): i for i, p in enumerate(self._providers)}
         for _ in range(len(self._providers) * 2):
             idx = next(self._cycle)
             provider = self._providers[idx]

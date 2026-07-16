@@ -80,8 +80,7 @@ class LocalMockKmsBackend:
 
     def wrap_key(self, plaintext_key: bytes) -> bytes:
         return bytes(
-            b ^ self._wrapping_key[i % len(self._wrapping_key)]
-            for i, b in enumerate(plaintext_key)
+            b ^ self._wrapping_key[i % len(self._wrapping_key)] for i, b in enumerate(plaintext_key)
         )
 
     def unwrap_key(self, wrapped_key: bytes) -> bytes:

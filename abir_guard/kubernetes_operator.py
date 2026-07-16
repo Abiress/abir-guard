@@ -46,7 +46,12 @@ class KubernetesOperator:
                     "memory": config.memory_limit,
                 },
             },
-            "env": [{"name": "ABIR_GUARD_API_KEY", "valueFrom": {"secretKeyRef": {"name": "abir-guard-secrets", "key": "apiKey"}}}],
+            "env": [
+                {
+                    "name": "ABIR_GUARD_API_KEY",
+                    "valueFrom": {"secretKeyRef": {"name": "abir-guard-secrets", "key": "apiKey"}},
+                }
+            ],
         }
 
     @staticmethod
@@ -76,7 +81,11 @@ class KubernetesOperator:
                                     {
                                         "name": "rotation",
                                         "image": image,
-                                        "args": ["rotate", "--max-keys", str(policy.max_keys_per_run)],
+                                        "args": [
+                                            "rotate",
+                                            "--max-keys",
+                                            str(policy.max_keys_per_run),
+                                        ],
                                     }
                                 ],
                             }

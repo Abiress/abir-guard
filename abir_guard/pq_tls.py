@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.asymmetric import x25519
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from .ml_kem import MLKEM1024
 
@@ -40,7 +40,9 @@ class PostQuantumTls:
         ctx.options |= ssl.OP_NO_COMPRESSION
         return ctx
 
-    def derive_hybrid_secret(self, server_kem_public_key: bytes, server_x25519_public_key: bytes) -> HybridTlsSecrets:
+    def derive_hybrid_secret(
+        self, server_kem_public_key: bytes, server_x25519_public_key: bytes
+    ) -> HybridTlsSecrets:
         kem_ct, kem_ss = self.kem.encapsulate(server_kem_public_key)
 
         eph_sk = x25519.X25519PrivateKey.generate()

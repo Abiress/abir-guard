@@ -47,14 +47,23 @@ class ComplianceManager:
             tags=list(tags or []),
         )
         self._records[record_id] = rec
-        self._audit_events.append({"event": "add_record", "record_id": record_id, "ts": rec.created_at})
+        self._audit_events.append(
+            {"event": "add_record", "record_id": record_id, "ts": rec.created_at}
+        )
         return rec
 
     def right_to_erasure(self, subject_id: str) -> int:
         to_delete = [rid for rid, rec in self._records.items() if rec.subject_id == subject_id]
         for rid in to_delete:
             del self._records[rid]
-            self._audit_events.append({"event": "erase_record", "record_id": rid, "subject_id": subject_id, "ts": time.time()})
+            self._audit_events.append(
+                {
+                    "event": "erase_record",
+                    "record_id": rid,
+                    "subject_id": subject_id,
+                    "ts": time.time(),
+                }
+            )
         return len(to_delete)
 
     def purge_expired(self, now: Optional[float] = None) -> int:

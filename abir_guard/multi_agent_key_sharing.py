@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List
 
 # A prime larger than 2^256 to support 256-bit secret reconstruction.
 PRIME = 2**521 - 1
@@ -47,7 +47,9 @@ class MultiAgentKeySharing:
             raise ValueError("agent count mismatch")
 
         secret_int = self._to_int(secret)
-        coeffs = [secret_int] + [secrets.randbelow(PRIME - 1) + 1 for _ in range(self.policy.threshold - 1)]
+        coeffs = [secret_int] + [
+            secrets.randbelow(PRIME - 1) + 1 for _ in range(self.policy.threshold - 1)
+        ]
 
         shares: List[AgentShare] = []
         for idx, agent_id in enumerate(ids, start=1):
