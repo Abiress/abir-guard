@@ -10,7 +10,7 @@ dependencies = [
  "argon2",
  "base64",
  "clap",
- "digest 0.10.7",
+ "digest 0.11.3",
  "dirs",
  "fips204",
  "getrandom 0.4.2",
