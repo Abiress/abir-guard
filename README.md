@@ -58,6 +58,7 @@
 - [Phase 4: Enterprise & Cloud](#phase-4-enterprise--cloud)
 - [Phase 5: AI Security & Compliance](#phase-5-ai-security--compliance)
 - [Phase 6: Distributed & Quantum Ecosystem](#phase-6-distributed--quantum-ecosystem)
+- [Phase 7: Confidential Computing & Advanced Cryptography](#phase-7-confidential-computing--advanced-cryptography)
 - [Docker Deployment](#docker-deployment)
 - [HSM & TPM Integration](#hsm--tpm-integration)
 - [Quantum Readiness](#quantum-readiness)
@@ -890,6 +891,133 @@ signature = cluster.sign("key-id", b"data-to-sign")
 
 ---
 
+## Phase 7: Confidential Computing & Advanced Cryptography
+
+Phase 7 extends the Rust core with production-grade confidential computing, verifiable secret sharing, blockchain key anchoring, interoperability standards, and performance primitives. These modules are implemented in Rust (`src/`) with full test coverage (146 of 176 lib tests).
+
+### Confidential Computing
+
+Multi-TEE support with SGX (DCAP/IAS attestation), ARM TrustZone (OP-TEE command dispatch), and a unified attestation-as-a-service facade.
+
+```rust
+use abir_guard::confidential_computing::sgx::Enclave;
+
+// SGX enclave lifecycle
+let enclave = Enclave::new("production");
+let config = enclave.attestation_config();
+assert!(config.supports_dcap());
+
+// Unified attestation verdict from any TEE provider
+use abir_guard::confidential_computing::attestation_service::{AttestationService, Policy};
+
+let service = AttestationService::new(Policy {
+    allowed_providers: vec!["sgx".into(), "trustzone".into()],
+    min_trust_level: 3,
+    max_evidence_age_secs: 300,
+});
+```
+
+**Multi-Party Computation** — commit/reveal protocol with threshold shares and anti-replay nonce tracking:
+
+```rust
+use abir_guard::confidential_computing::mpc::{MpcSession, Policy};
+
+let session = MpcSession::new(Policy {
+    threshold: 3,
+    total_participants: 5,
+    round_timeout_secs: 30,
+});
+```
+
+### Advanced Secret Sharing
+
+Verifiable Shamir shares (VSS commitments), proactive epoch-based refresh, and participant-aware re-sharing with tamper-detectable `RefreshProof` transcripts.
+
+```rust
+use abir_guard::advanced_secret_sharing::*;
+
+let shares = authenticated_share(&secret, 3, 5, b"context", 0)?;
+// Proactive refresh: rotate shares without changing the secret
+let refresher = ProactiveRefresher::new(threshold, participants);
+let new_shares = refresher.refresh(old_shares, epoch + 1)?;
+```
+
+### Blockchain Key Anchoring
+
+On-chain key commitments with SHA-256 hashes, owner-gated revocation, and a `SmartContractAnchor` trait for pluggable chain backends.
+
+```rust
+use abir_guard::blockchain::dpki::DecentralizedPki;
+use abir_guard::blockchain::smart_contract::SimulatedContractAnchor;
+
+let pki = DecentralizedPki::new(SimulatedContractAnchor::default());
+pki.register("did:example:123", &public_key, validity_window)?;
+let resolved = pki.resolve("did:example:123")?;
+```
+
+### Interoperability Standards
+
+JWK serialization for ML-DSA-65 and ML-KEM-1024 keys, plus W3C DID Core document management with verification methods and relationship tracking.
+
+```rust
+use abir_guard::interop::jwk::PqcJwk;
+use abir_guard::interop::did::DidDocument;
+
+let jwk = PqcJwk::from_keypair(&ml_dsa_keypair)?;
+let jwk_json = jwk.to_json()?;
+
+let mut doc = DidDocument::new("did:example:abc");
+doc.add_verification_method("key-1", &public_key, &["authentication".into()]);
+```
+
+### Audit & Compliance
+
+Append-only SHA-256 hash-chained audit log with tamper detection, plus a compliance engine that checks auth-failure streaks, revocation criticality, and revoke/rotation ratios.
+
+```rust
+use abir_guard::audit::audit_log::AuditLog;
+use abir_guard::audit::compliance::{ComplianceReport, Policy};
+
+let mut log = AuditLog::new();
+log.append("admin", "rotate_key", "key-123", "warning")?;
+assert!(log.verify_chain().is_ok());
+
+let report = ComplianceReport::evaluate(&log, &Policy::default());
+assert!(report.violations.is_empty());
+```
+
+### Performance Primitives
+
+Bounded LRU key cache that amortizes Argon2id cost, and batch ML-DSA sign/verify that doesn't abort on partial failure.
+
+```rust
+use abir_guard::performance::key_cache::DerivedKeyCache;
+use abir_guard::performance::batch_ops::{batch_sign, batch_verify};
+
+let mut cache = DerivedKeyCache::new(1024);
+let key = cache.get_or_derive("passphrase", &salt, &params)?;
+
+let results = batch_sign(&keypair, &messages);
+let verification = batch_verify(&public_keys, &messages, &signatures);
+// verification.summary().passed == total
+```
+
+### Quantum Key Distribution
+
+BB84-inspired simulation with pluggable entropy sources, deterministic XorShift64 for reproducibility, configurable channel noise, and QBER-gated session reports.
+
+```rust
+use abir_guard::qkd::{Bb84Simulator, QuantumChannel, XorShift64};
+
+let source = XorShift64::new(0xDEAD_BEEF);
+let channel = QuantumChannel { noise_rate: 0.03, loss_rate: 0.01 };
+let mut sim = Bb84Simulator::new(source, channel, 256);
+let report = sim.run_session();
+// report.qber < 0.11 → session accepted
+```
+
+---
+
 ## Docker Deployment
 
 ```bash
@@ -1129,7 +1257,7 @@ abir-guard/
 
 ## Roadmap
 
-All six phases are complete and available in this repository.
+All seven phases are complete and available in this repository.
 
 ### Phase 1: Bedrock ✅ Complete
 - [x] X25519 hybrid KEM with AES-256-GCM envelope encryption
@@ -1189,6 +1317,15 @@ All six phases are complete and available in this repository.
 - [x] Apple Secure Enclave and Intel SGX native-path attestation surfaces
 - [x] W3C DID documents and verifiable credential issue/verify flow
 - [x] Multi-HSM cluster — weighted routing, health checks, regional failover
+
+### Phase 7: Confidential Computing & Advanced Cryptography ✅ Complete
+- [x] Confidential computing — SGX (DCAP/IAS), ARM TrustZone (OP-TEE), MPC commit/reveal, unified attestation-as-a-service
+- [x] Advanced secret sharing — VSS commitments, proactive epoch refresh, participant re-sharing with tamper-detectable `RefreshProof`
+- [x] Blockchain key anchoring — SHA-256 on-chain commitments, owner-gated revocation, `SmartContractAnchor` trait
+- [x] Interoperability — JWK serialization for ML-DSA-65/ML-KEM-1024, W3C DID Core document management
+- [x] Audit & compliance — append-only SHA-256 hash-chained audit log, compliance engine (auth-failure streaks, revocation ratios)
+- [x] Performance — bounded LRU key cache (Argon2id amortization), batch ML-DSA sign/verify (partial-failure-tolerant)
+- [x] Quantum key distribution — BB84 simulation with pluggable entropy, deterministic XorShift64, QBER-gated reports
 
 ---
 

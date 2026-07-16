@@ -21,6 +21,7 @@ All notable changes to Abir-Guard are documented in this file. The format is bas
 
 ### Added
 
+- **Phase 7 documentation in README:** Added Phase 7 section documenting all EPIC 1-7 Rust modules: confidential computing (SGX/TrustZone/MPC/attestation-as-a-service), advanced secret sharing (VSS/proactive refresh/re-sharing), blockchain key anchoring, interoperability (JWK/DID), audit & compliance, performance primitives, and QKD simulation. These 146 Rust tests (83% of the suite) were previously undocumented in the README.
 - **Phase 6 foundations implemented (Python):**
   - Added `abir_guard/federated_vault.py` with signed LWW-CRDT replication for federated vault sync and conflict resolution.
   - Added `abir_guard/qkd_network.py` with BB84-style QKD session simulation (QBER gate + transport key derivation).
