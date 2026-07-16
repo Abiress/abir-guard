@@ -110,17 +110,17 @@ class TestMLKEM:
     """Test ML-KEM Key Encapsulation"""
     
     def test_availability(self):
-        kem = MLKEM1024()
+        kem = MLKEM1024(require_pq=False)
         assert isinstance(kem.is_available(), bool)
     
     def test_keygen(self):
-        kem = MLKEM1024()
+        kem = MLKEM1024(require_pq=False)
         pk, sk = kem.keygen()
         assert len(pk) > 0
         assert len(sk) > 0
     
     def test_encapsulate_decapsulate(self):
-        kem = MLKEM1024()
+        kem = MLKEM1024(require_pq=False)
         pk, sk = kem.keygen()
         
         ct, ss = kem.encapsulate(pk)

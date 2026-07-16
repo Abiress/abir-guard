@@ -53,7 +53,7 @@ class TestPostQuantumTls:
         from abir_guard.pq_tls import PostQuantumTls
         from cryptography.hazmat.primitives.asymmetric import x25519
 
-        kem = MLKEM1024()
+        kem = MLKEM1024(require_pq=False)
         pk, _ = kem.keygen()
 
         x_sk = x25519.X25519PrivateKey.generate()

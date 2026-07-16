@@ -79,7 +79,7 @@ def test_ml_kem():
     print("TEST 3: ML-KEM Key Encapsulation")
     print("="*60)
     
-    kem = MLKEM1024()
+    kem = MLKEM1024(require_pq=False)
     print(f"[✓] ML-KEM available: {kem.is_available()}")
     
     # Key generation
