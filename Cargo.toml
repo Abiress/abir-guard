@@ -43,7 +43,7 @@ clap = { version = "4", features = ["derive", "env"] }
 thiserror = "1"
 base64 = "0.22"
 zeroize = { version = "1", features = ["zeroize_derive"] }
-dirs = "5"
+dirs = "6"
 argon2 = { version = "0.5", features = ["alloc"] }
 lazy_static = "1"
 fips204 = "0.4"
