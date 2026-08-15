@@ -31,7 +31,7 @@ include = [
 
 [dependencies]
 aes-gcm = "0.10"
-hkdf = "0.12"
+hkdf = "0.13"
 sha3 = "0.10"
 sha2 = "0.10"
 hmac = "0.12"
